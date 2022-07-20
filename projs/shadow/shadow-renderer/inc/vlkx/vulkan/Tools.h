@@ -27,6 +27,16 @@ namespace VkTools {
         VmaAllocation allocation;
     };
 
+    struct VlkxImage {
+        ManagedImage data;
+        VkImageView view;
+        VkSampler sampler;
+        VkDescriptorSet draw;
+        VkExtent2D extent;
+        VkFormat format;
+        VkSampleCountFlagBits sampleCount;
+    };
+
     ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent, VkDevice device);
     VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode);
     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, VkDevice device);
