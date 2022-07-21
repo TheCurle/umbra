@@ -189,7 +189,7 @@ namespace vlkx {
 
         RenderPassBuilder(const RenderPassBuilder&) = delete;
         RenderPassBuilder& operator=(const RenderPassBuilder&) = delete;
-        ~RenderPassBuilder() = delete;
+        ~RenderPassBuilder() = default;
 
         /** Fluent API Features; chain calls to set data on the render pass.*/
         #define fluent RenderPassBuilder&
