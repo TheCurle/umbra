@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace vlkx {
     /**
@@ -78,7 +79,51 @@ namespace vlkx {
             }
         }
 
+        VkPipelineStageFlags getStage() const {
+            switch (type) {
+                case Type::DontCare: return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                case Type::RenderTarget:
+                case Type::Multisample:
+                case Type::Presentation:
+                    return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                case Type::DepthStencil:
+                    return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                case Type::LinearAccess:
+                case Type::Sampled:
+                    switch (location) {
+                        case Location::Host: return VK_PIPELINE_STAGE_HOST_BIT;
+                        case Location::FragmentShader: return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                        case Location::ComputeShader: return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+                        case Location::VertexShader:
+                        case Location::Other:
+                            throw std::runtime_error("Linear or sampled attachments must not be used in Vertex or Other stages.");
+                        case Location::DontCare: throw std::runtime_error("Linear or sampled attachments must have an access.");
+                    }
+
+                case Type::Transfer:
+                    return VK_PIPELINE_STAGE_TRANSFER_BIT;
+            }
+        }
+
         Access getAccess() const { return access; }
+
+        Type getType() const { return type; }
+
+        VkAccessFlags getAccessFlags() const {
+            switch (type) {
+                case Type::DontCare: return VK_ACCESS_NONE_KHR;
+                case Type::RenderTarget: return getReadOrWrite(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+                case Type::DepthStencil: return getReadOrWrite(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+                case Type::Multisample: return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                case Type::Presentation: return 0;
+                case Type::LinearAccess:
+                case Type::Sampled:
+                    return location == Location::Host ? getReadOrWrite(VK_ACCESS_HOST_READ_BIT, VK_ACCESS_HOST_WRITE_BIT) : getReadOrWrite(VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT);
+                case Type::Transfer:
+                    return getReadOrWrite(VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+            }
+        };
 
     private:
 
@@ -89,6 +134,15 @@ namespace vlkx {
         Access access;
         Location location;
         std::optional<int> attachment;
+
+        inline VkAccessFlags getReadOrWrite(VkAccessFlags read, VkAccessFlags write) const {
+            VkAccessFlags flag;
+            if (access == Access::ReadOnly || access == Access::ReadWrite)
+                flag |= read;
+            if (access == Access::WriteOnly || access == Access::ReadWrite)
+                flag |= write;
+            return flag;
+        };
     };
 
     /**
