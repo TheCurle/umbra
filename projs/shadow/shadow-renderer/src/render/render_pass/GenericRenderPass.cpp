@@ -181,7 +181,7 @@ namespace vlkx {
 
     fluent RenderPassBuilder::setSubpass(int idx, std::vector<VkAttachmentReference> &&color,
                                          std::vector<VkAttachmentReference> &&multisample,
-                                         std::optional<VkAttachmentReference> &depthStencil) {
+                                         VkAttachmentReference &depthStencil) {
         if (multisample.empty())
             if (multisample.size() != color.size())
                 throw std::runtime_error("Constructing a subpass with mismatched color and multisample attachments");

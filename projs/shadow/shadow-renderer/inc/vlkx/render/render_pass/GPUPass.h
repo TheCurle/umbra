@@ -83,13 +83,13 @@ namespace vlkx {
         GraphicsPass& operator=(const GraphicsPass&) = delete;
 
         // Get the default render ops for a color buffer.
-        static RenderPassBuilder::Attachment::ColorOps getDefaultOps() {
-            return { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE };
+        static RenderPassBuilder::Attachment::OpsType getDefaultOps() {
+            return RenderPassBuilder::Attachment::ColorOps { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE };
         }
 
         // Get the default render ops for a stencil buffer.
-        static RenderPassBuilder::Attachment::StencilDepthOps getStencilOps() {
-            return { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE };
+        static RenderPassBuilder::Attachment::OpsType getStencilOps() {
+            return RenderPassBuilder::Attachment::StencilDepthOps { VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE };
         }
 
         /**
@@ -100,7 +100,7 @@ namespace vlkx {
          * @param ops optional; uses the static defaults if not present.
          * @return the index into the VkAttachmentDescriptions.
          */
-        int add(const std::string& name, UsageTracker&& history, std::function<int(int pass)>&& getter, const std::optional<RenderPassBuilder::Attachment::ColorOps> ops = std::nullopt);
+        int add(const std::string& name, UsageTracker&& history, std::function<int(int pass)>&& getter, const std::optional<RenderPassBuilder::Attachment::OpsType> ops = std::nullopt);
 
         #define fluent GraphicsPass&
 
@@ -114,7 +114,7 @@ namespace vlkx {
         struct AttachmentMeta {
             int index;
             std::function<int(int pass)> getter;
-            vlkx::RenderPassBuilder::Attachment::ColorOps ops;
+            vlkx::RenderPassBuilder::Attachment::OpsType ops;
             std::map<int, std::string> multisample;
         };
 
@@ -137,7 +137,7 @@ namespace vlkx {
          * @param userOps operations to use for the image, as an optional override.
          * @return the ColorOps to use for the given attachment.
          */
-        RenderPassBuilder::Attachment::ColorOps getOps(const std::string& name, const UsageTracker& history, const std::optional<RenderPassBuilder::Attachment::ColorOps>& userOps) const;
+        RenderPassBuilder::Attachment::OpsType getOps(const std::string& name, const UsageTracker& history, const std::optional<RenderPassBuilder::Attachment::OpsType>& userOps) const;
 
         /**
          * Get the usage type of the image.
@@ -216,7 +216,7 @@ namespace vlkx {
          * @param images the list of images that were used in the compute pass
          * @param computeOps the compute functions to upload to the GPU
          */
-        void execute(const VkCommandBuffer& commands, uint32_t queueFamily, const std::map<std::string, const VkTools::VlkxImage*>& images, std::vector<const std::function<void()>> computeOps) const;
+        void execute(const VkCommandBuffer& commands, uint32_t queueFamily, const std::map<std::string, const VkTools::VlkxImage*>& images, const std::vector<std::function<void()>>& computeOps) const;
 
         /**
          * Insert a memory barrier, to transition the layout of the image from the previous to the curent.

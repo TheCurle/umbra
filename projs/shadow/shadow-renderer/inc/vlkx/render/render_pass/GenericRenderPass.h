@@ -78,8 +78,10 @@ namespace vlkx {
                 VkAttachmentStoreOp STENCIL_STORE;  // Store data in the stencil attachment
             };
 
+            using OpsType = std::variant<ColorOps, StencilDepthOps>;
+
             // The operations that can be performed on this attachment
-            std::variant<ColorOps, StencilDepthOps> ops;
+            OpsType ops;
             // The initial layout of an image in this attachment (pre-GPU upload)
             VkImageLayout layoutInitial;
             // The final layout of an image in this attachment (as seen by the shader)
@@ -190,6 +192,7 @@ namespace vlkx {
         RenderPassBuilder(const RenderPassBuilder&) = delete;
         RenderPassBuilder& operator=(const RenderPassBuilder&) = delete;
         ~RenderPassBuilder() = default;
+        RenderPassBuilder() = default;
 
         /** Fluent API Features; chain calls to set data on the render pass.*/
         #define fluent RenderPassBuilder&
@@ -201,7 +204,7 @@ namespace vlkx {
         // Update the image backing an attachment. The function must be executable during execute() later on.
         fluent updateAttachmentBacking(int idx, std::function<const VkTools::VlkxImage&(int idx)>&& getBacking);
         // Set a specific subpass. Use the static parse methods to create these vectors.
-        fluent setSubpass(int idx, std::vector<VkAttachmentReference>&& color, std::vector<VkAttachmentReference>&& multisample, std::optional<VkAttachmentReference>& depthStencil);
+        fluent setSubpass(int idx, std::vector<VkAttachmentReference>&& color, std::vector<VkAttachmentReference>&& multisample, VkAttachmentReference& depthStencil);
         // Add a dependency between two subpasses.
         fluent addDependency(const SubpassDependency& dep);
 
