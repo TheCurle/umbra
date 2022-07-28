@@ -216,7 +216,7 @@ namespace vlkx {
          * @param images the list of images that were used in the compute pass
          * @param computeOps the compute functions to upload to the GPU
          */
-        void execute(const VkCommandBuffer& commands, uint32_t queueFamily, const std::map<std::string, const VkTools::VlkxImage*>& images, const std::vector<std::function<void()>>& computeOps) const;
+        void execute(const VkCommandBuffer& commands, uint32_t queueFamily, const std::map<std::string, const VkImage*>& images, const std::vector<std::function<void()>>& computeOps) const;
 
         /**
          * Insert a memory barrier, to transition the layout of the image from the previous to the curent.
