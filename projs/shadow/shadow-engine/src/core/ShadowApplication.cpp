@@ -5,6 +5,9 @@
 #include <vlkx/render/Camera.h>
 #include <vlkx/render/geometry/SingleRenderer.h>
 
+#define CATCH(x) \
+    try { x } catch (std::exception& e) { std::cerr << "FATAL ERROR: " << e.what() << std::endl; exit(0); }
+
 namespace ShadowEngine {
 
 	ShadowApplication* ShadowApplication::instance = nullptr;
@@ -49,7 +52,7 @@ namespace ShadowEngine {
 
         window_ = new ShadowWindow(800,450);
 
-        VulkanManager::getInstance()->initVulkan(window_->sdlWindowPtr);
+        CATCH(VulkanManager::getInstance()->initVulkan(window_->sdlWindowPtr);)
 
         /*
 		moduleManager.PushModule(new Log());
@@ -82,7 +85,7 @@ namespace ShadowEngine {
 
         // Create the renderer
         SingleRenderer object;
-        object.createSingleRenderer(Geo::MeshType::Cube, glm::vec3(-1, 0, -1), glm::vec3(0.5));
+        CATCH(object.createSingleRenderer(Geo::MeshType::Cube, glm::vec3(-1, 0, -1), glm::vec3(0.5));)
 
         SDL_Event event;
 		while (running)
@@ -96,8 +99,8 @@ namespace ShadowEngine {
 
             VulkanManager::getInstance()->startDraw();
 
-            object.updateUniforms(camera);
-            object.draw();
+            CATCH(object.updateUniforms(camera);)
+            CATCH(object.draw();)
 
             VulkanManager::getInstance()->endDraw();
 
