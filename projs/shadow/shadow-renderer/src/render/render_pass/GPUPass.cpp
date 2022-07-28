@@ -322,7 +322,7 @@ namespace vlkx {
     }
 
     void ComputePass::execute(const VkCommandBuffer &commands, uint32_t queueFamily,
-                              const std::map<std::string, const VkTools::VlkxImage*> &images,
+                              const std::map<std::string, const VkImage*> &images,
                               const std::vector<std::function<void()>>& computeOps) const {
 
         if (computeOps.size() != numPasses)
@@ -341,7 +341,7 @@ namespace vlkx {
                 if (iter == images.end())
                     throw std::runtime_error("Image " + image + " not provided");
 
-                barrier(commands, queueFamily, **iter->second, usage.value().lastUsage, usage.value().currentUsage);
+                barrier(commands, queueFamily, *iter->second, usage.value().lastUsage, usage.value().currentUsage);
             }
 
             if (pass < numPasses)
