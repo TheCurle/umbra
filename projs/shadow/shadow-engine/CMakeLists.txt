@@ -1,41 +1,12 @@
 find_package(Vulkan REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
-find_package(imgui REQUIRED)
+find_package(SDL2 REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-FILE(GLOB_RECURSE SOURCES
-        core/src/*.cpp
-        shadow-renderer/src/*.cpp
-        shadow-reflection/src/*.cpp
-        )
-FILE(GLOB_RECURSE HEADERS
-        core/inc/*.h
-        shadow-renderer/inc/*.h
-        shadow-reflection/inc/*.h
-        )
+FILE(GLOB_RECURSE SOURCES src/*.cpp)
+FILE(GLOB_RECURSE HEADERS src/*.h)
 
-add_library(shadow-engine SHARED ${SOURCES} $<TARGET_OBJECTS:imgui>)
+add_library(shadow-engine ${SOURCES})
 
-target_include_directories(shadow-engine
-        PRIVATE ${SDL2_INCLUDE_DIRS}
-        PUBLIC
-            core/inc
-            shadow-renderer/inc
-            shadow-reflection/inc
-        ${glm_SOURCE_DIR}
-        INTERFACE
-            ${imgui_SOURCE_DIR}
-            ${imgui_SOURCE_DIR}/backends)
-
-target_link_libraries(shadow-engine
-        PUBLIC Vulkan::Vulkan SDL2::SDL2 spdlog dylib
-#        "-Wl,--whole-archive ./imgui.a -Wl,--no-whole-archive"
-        imgui
-)
-target_compile_definitions(shadow-engine PRIVATE "EXPORTING_SH_ENGINE")
-
-target_link_options(shadow-engine PUBLIC -Wl,--export-all-symbols)
-
-
+target_include_directories(shadow-engine PRIVATE ${SDL2_INCLUDE_DIRS} PUBLIC ${HEADERS})
+target_link_libraries(shadow-engine PRIVATE Vulkan::Vulkan PUBLIC ${SDL2_LIBRARIES} shadow-reflect shadow-asset spdlog PUBLIC imgui renderer)

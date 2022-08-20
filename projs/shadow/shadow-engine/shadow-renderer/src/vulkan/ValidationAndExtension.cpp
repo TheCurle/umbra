@@ -41,6 +41,8 @@ std::vector<const char*> ValidationAndExtension::getRequiredExtensions(SDL_Windo
     SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr);
 
     std::vector<const char*> extensions = {
+            "VK_KHR_portability_enumeration",
+            "VK_KHR_get_physical_device_properties2"
     };
 
     size_t additional_extension_count = extensions.size();
@@ -57,17 +59,16 @@ std::vector<const char*> ValidationAndExtension::getRequiredExtensions(SDL_Windo
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugReportFlagsEXT                       flags,
-        VkDebugReportObjectTypeEXT                  objectType,
-        uint64_t                                    object,
-        size_t                                      location,
-        int32_t                                     messageCode,
-        const char*                                 pLayerPrefix,
-        const char*                                 pMessage,
-        void*                                       pUserData
-        ) {
+	VkDebugReportFlagsEXT flags,
+	VkDebugReportObjectTypeEXT objExt,
+	uint64_t obj,
+    size_t location,
+	int32_t code,
+	const char* layer,
+	const char* message,
+	void* user) {
 
-	std::cerr << "Validation from layer " << pLayerPrefix << ": " << pMessage << std::endl;
+	std::cerr << "Validation from layer " << layer << ": " << message << std::endl;
 	return false;
 }
 

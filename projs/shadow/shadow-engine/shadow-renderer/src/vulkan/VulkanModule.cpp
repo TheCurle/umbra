@@ -167,6 +167,7 @@ void VulkanModule::createAppAndVulkanInstance(bool enableValidation, ValidationA
 
     VkInstanceCreateInfo instanceInfo = {};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
     instanceInfo.pApplicationInfo = &info;
 
     auto extensions = validations->getRequiredExtensions(wnd, true);

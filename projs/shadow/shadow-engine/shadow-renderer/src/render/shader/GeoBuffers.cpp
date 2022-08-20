@@ -73,7 +73,7 @@ void GeoBuffers::createIndexBuffer() {
 	vmaUnmapMemory(VulkanModule::getInstance()->getAllocator(), staging.allocation);
 
 	// Prepare an area in the GPU that we cannot see, that the vertex data can live permanently.
-	indexBuffer = VkTools::createGPUBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VulkanModule::getInstance()->getDevice()->logical, VulkanModule::getInstance()->getDevice()->physical);
+	indexBuffer = VkTools::createGPUBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VulkanModule::getInstance()->getDevice()->logical, VulkanModule::getInstance()->getDevice()->physical, false);
 
 	// Copy our data from the staging buffer into the new permanent buffer
 	VkTools::copyGPUBuffer(staging.buffer, indexBuffer.buffer, bufferSize, VulkanModule::getInstance()->getDevice()->logical, VulkanModule::getInstance()->getDevice()->graphicsQueue, VulkanModule::getInstance()->getDevice()->queueData.graphics);
