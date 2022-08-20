@@ -8,14 +8,16 @@
 
 namespace vlkx {
 
-    class Attachment {
-    public:
+    /**
+     * Internally-used metadata to track attachment images by name and position.
+     * This behaviour is duplicated elsewhere.
+     */
+    struct Attachment {
         explicit Attachment(std::string_view image) : name(image) {}
 
         // Adds the image to the tracker and initializes state.
         void add(MultiImageTracker& tracker, const VkTools::VlkxImage& image);
 
-    private:
         const std::string name;
         std::optional<int> index;
     };
@@ -30,20 +32,31 @@ namespace vlkx {
 
         RendererConfig(int passCount, std::optional<int> firstTransparent = std::nullopt, std::optional<int> firstOverlay = std::nullopt);
 
+        // Get the number of passes that use the depth buffer.
         int depthPasses() const {
             return firstOpaquePass + firstTransparentPass;
         }
 
+        // Get the total number of passes.
         int passes() const {
             return depthPasses() + firstOverlayPass;
         }
 
+        // Get whether any passes use the depth buffer.
         bool usesDepth() const {
             return depthPasses() > 0;
         }
 
         RendererConfig(RendererConfig&) noexcept = default;
         RendererConfig(const RendererConfig&) = default;
+
+    private:
+        // Create the render pass builder.
+        void build();
+
+        Attachment swapchainImage { "Swapchain" };
+        Attachment multisampleImage { "Multisample" };
+        Attachment stencilImage { "Depth-Stencil" };
 
         int firstOpaquePass = 0;
         int firstTransparentPass = 0;
