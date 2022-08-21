@@ -26,6 +26,7 @@ void VulkanDevice::choosePhysicalDevice(VkInstance* vulkan, VkSurfaceKHR surface
 	for (const auto& device : physicals) {
 		VkPhysicalDeviceProperties props;
 		vkGetPhysicalDeviceProperties(device, &props);
+        limits = props.limits;
 
         bool dedicated = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
         spdlog::debug(std::string("Device: ") + props.deviceName + ", discrete: " + (dedicated ? "yes" : "no"));

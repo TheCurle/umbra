@@ -32,6 +32,8 @@ namespace vlkx {
 
         RendererConfig(int passCount, std::optional<int> firstTransparent = std::nullopt, std::optional<int> firstOverlay = std::nullopt);
 
+        RendererConfig(int passCount);
+
         // Get the number of passes that use the depth buffer.
         int depthPasses() const {
             return firstOpaquePass + firstTransparentPass;
@@ -47,13 +49,13 @@ namespace vlkx {
             return depthPasses() > 0;
         }
 
+        // Create the render pass builder. Can be called multiple times.
+        void build();
+
         RendererConfig(RendererConfig&) noexcept = default;
         RendererConfig(const RendererConfig&) = default;
 
     private:
-        // Create the render pass builder.
-        void build();
-
         Attachment swapchainImage { "Swapchain" };
         Attachment multisampleImage { "Multisample" };
         Attachment stencilImage { "Depth-Stencil" };

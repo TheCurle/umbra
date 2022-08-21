@@ -27,16 +27,6 @@ namespace VkTools {
         VmaAllocation allocation;
     };
 
-    struct VlkxImage {
-        ManagedImage data;
-        VkImageView view;
-        VkSampler sampler;
-        VkDescriptorSet draw;
-        VkExtent2D extent;
-        VkFormat format;
-        VkSampleCountFlagBits sampleCount;
-    };
-
     ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent, VkDevice device);
     VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode);
     VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, VkDevice device);
@@ -44,9 +34,11 @@ namespace VkTools {
     uint32_t findMemoryIndex(uint32_t type, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
     VkCommandBuffer createTempCommandBuffer(VkCommandPool pool, VkDevice logical);
     void executeAndDeleteTempBuffer(VkCommandBuffer buffer, VkCommandPool pool, VkQueue queue, VkDevice logicalDevice);
-    void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VkDevice logical, VkQueue graphicsQueue, uint32_t queueIndex);
+    void immediateExecute(const std::function<void(VkCommandBuffer&)>& execute, VulkanDevice* dev);
+    void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VulkanDevice* dev);
 
 
+#define VKTOOLS_IMPLEMENTATION
     #ifdef VKTOOLS_IMPLEMENTATION
     ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent, VkDevice device) {
         // Set up image metadata
@@ -191,39 +183,39 @@ namespace VkTools {
         vkFreeCommandBuffers(logicalDevice, pool, 1, &buffer);
     }
 
-    void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VkDevice logical, VkQueue graphicsQueue, uint32_t queueIndex) {
-
-        // Prepare to create a temporary command pool.
+    void immediateExecute(const std::function<void(VkCommandBuffer&)>& execute, VulkanDevice* dev) {
         VkCommandPool pool;
         VkCommandPoolCreateInfo poolCreateInfo = {};
         poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolCreateInfo.queueFamilyIndex = queueIndex;
+        poolCreateInfo.queueFamilyIndex = dev->getQueues().graphics;
         poolCreateInfo.flags = 0;
 
         // Create the pool
-        if (vkCreateCommandPool(logical, &poolCreateInfo, nullptr, &pool) != VK_SUCCESS)
+        if (vkCreateCommandPool(dev->logical, &poolCreateInfo, nullptr, &pool) != VK_SUCCESS)
             throw std::runtime_error("Unable to allocate a temporary command pool");
 
-        // Allocate a buffer
-        VkCommandBuffer commands = createTempCommandBuffer(pool, logical);
+        VkCommandBuffer buffer = VkTools::createTempCommandBuffer(pool, dev->logical);
 
-        // ------ Commands are saved into the commands field ------ //
+        execute(buffer);
 
-        // Prepare to copy the data between buffers
-        VkBufferCopy copyInfo = {};
-        copyInfo.srcOffset = 0;
-        copyInfo.dstOffset = 0;
-        copyInfo.size = length;
+        VkTools::executeAndDeleteTempBuffer(buffer, pool, dev->graphicsQueue, dev->logical);
 
-        // Copy the data.
-        vkCmdCopyBuffer(commands, source, dest, 1, &copyInfo);
+        vkDestroyCommandPool(dev->logical, pool, nullptr);
 
-        // ------ Commands are no longer saved into the commands field ------ //
+    }
 
-        executeAndDeleteTempBuffer(commands, pool, graphicsQueue, logical);
+    void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VulkanDevice* dev) {
+        immediateExecute([&](VkCommandBuffer& commands) {
+            // Prepare to copy the data between buffers
+            VkBufferCopy copyInfo = {};
+            copyInfo.srcOffset = 0;
+            copyInfo.dstOffset = 0;
+            copyInfo.size = length;
 
-        // Cleanup the temporary buffer and pool we created
-        vkDestroyCommandPool(logical, pool, nullptr);
+            // Copy the data.
+            vkCmdCopyBuffer(commands, source, dest, 1, &copyInfo);
+
+        }, dev);
     }
 
     #endif
