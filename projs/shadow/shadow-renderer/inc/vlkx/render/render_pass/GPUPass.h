@@ -77,6 +77,8 @@ namespace vlkx {
     class GraphicsPass : public CommonPass {
     public:
 
+        using LocationGetter = std::function<int(int pass)>;
+
         explicit GraphicsPass(int passes) : CommonPass {passes} {}
 
         GraphicsPass(const GraphicsPass&) = delete;
@@ -100,7 +102,7 @@ namespace vlkx {
          * @param ops optional; uses the static defaults if not present.
          * @return the index into the VkAttachmentDescriptions.
          */
-        int add(const std::string& name, UsageTracker&& history, std::function<int(int pass)>&& getter, const std::optional<RenderPassBuilder::Attachment::OpsType> ops = std::nullopt);
+        int add(const std::string& name, UsageTracker&& history, LocationGetter&& getter, const std::optional<RenderPassBuilder::Attachment::OpsType> ops = std::nullopt);
 
         #define fluent GraphicsPass&
 
@@ -113,7 +115,7 @@ namespace vlkx {
     private:
         struct AttachmentMeta {
             int index;
-            std::function<int(int pass)> getter;
+            LocationGetter getter;
             vlkx::RenderPassBuilder::Attachment::OpsType ops;
             std::map<int, std::string> multisample;
         };

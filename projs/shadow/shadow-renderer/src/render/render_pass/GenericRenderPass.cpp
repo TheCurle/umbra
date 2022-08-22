@@ -97,7 +97,7 @@ namespace vlkx {
         return count;
     }
 
-    std::vector<VkFramebuffer> createFramebuffers(const VkRenderPass& renderPass, const std::vector<std::function<const VkTools::VlkxImage&(int idx)>> getters, int count, const VkExtent2D& extent) {
+    std::vector<VkFramebuffer> createFramebuffers(const VkRenderPass& renderPass, const std::vector<std::function<const Image&(int idx)>> getters, int count, const VkExtent2D& extent) {
         std::vector<VkImageView> views(getters.size());
 
         VkFramebufferCreateInfo framebufferCreate {
@@ -115,7 +115,7 @@ namespace vlkx {
         std::vector<VkFramebuffer> framebuffers(count);
         for (int i = 0; i < framebuffers.size(); ++i) {
             for (int image = 0; image < getters.size(); image++)
-                views[image] = getters[image](i).view;
+                views[image] = getters[image](i).getView();
 
             vkCreateFramebuffer(VulkanManager::getInstance()->getDevice()->logical, &framebufferCreate, nullptr, &framebuffers[i]);
         }
@@ -171,10 +171,10 @@ namespace vlkx {
     }
 
     fluent RenderPassBuilder::updateAttachmentBacking(int idx,
-                                                      std::function<const VkTools::VlkxImage &(int)> &&getBacking) {
-        const VkTools::VlkxImage& img = getBacking(idx);
-        attachmentDescriptors[idx].format = img.format;
-        attachmentDescriptors[idx].samples = img.sampleCount;
+                                                      std::function<const Image &(int)> &&getBacking) {
+        const Image& img = getBacking(idx);
+        attachmentDescriptors[idx].format = img.getFormat();
+        attachmentDescriptors[idx].samples = img.getSamples();
         attachmentGetters.at(idx) = std::move(getBacking);
         return *this;
     }
@@ -226,7 +226,7 @@ namespace vlkx {
         if (vkCreateRenderPass(VulkanManager::getInstance()->getDevice()->logical, &createInfo, nullptr, &pass) != VK_SUCCESS)
             throw std::runtime_error("Unable to create render pass");
 
-        const auto framebufferSize = attachmentGetters[0](0).extent;
+        const auto framebufferSize = attachmentGetters[0](0).getExtent();
 
         return std::make_unique<RenderPass> (
                 static_cast<int>(descriptors.size()), pass, clearValues, framebufferSize, createFramebuffers(pass, attachmentGetters, framebufferCount.value(), framebufferSize),

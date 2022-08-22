@@ -4,6 +4,7 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include "vlkx/vulkan/abstraction/Image.h"
 
 class SwapChain {
 public:
@@ -14,7 +15,7 @@ public:
 	VkFormat format;
 	VkExtent2D extent;
 
-	std::vector<VkImage> images;
+	std::vector<vlkx::Image> images;
 
 	VkSurfaceFormatKHR chooseFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseMode(const std::vector<VkPresentModeKHR>& availableModes);

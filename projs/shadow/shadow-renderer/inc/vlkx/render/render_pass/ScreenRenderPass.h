@@ -5,43 +5,30 @@
 #include "vlkx/vulkan/Tools.h"
 #include "GenericRenderPass.h"
 #include "vlkx/vulkan/abstraction/ImageUsage.h"
+#include "vlkx/vulkan/abstraction/Image.h"
 
 namespace vlkx {
-
-    /**
-     * Internally-used metadata to track attachment images by name and position.
-     * This behaviour is duplicated elsewhere.
-     */
-    struct Attachment {
-        explicit Attachment(std::string_view image) : name(image) {}
-
-        // Adds the image to the tracker and initializes state.
-        void add(MultiImageTracker& tracker, const VkTools::VlkxImage& image);
-
-        const std::string name;
-        std::optional<int> index;
-    };
 
     // A simple and versatile way to configure render passes.
     // Intended to be used with the SimpleRenderPass and the ScreenRenderPass.
     class RendererConfig {
     public:
         RendererConfig() {
-            firstOpaquePass = 1;
+            numOpaquePasses = 1;
         }
 
         RendererConfig(int passCount, std::optional<int> firstTransparent = std::nullopt, std::optional<int> firstOverlay = std::nullopt);
 
-        RendererConfig(int passCount);
+        explicit RendererConfig(int passCount) : RendererConfig(passCount, std::nullopt) {}
 
         // Get the number of passes that use the depth buffer.
         int depthPasses() const {
-            return firstOpaquePass + firstTransparentPass;
+            return numOpaquePasses + numTransparentPasses;
         }
 
         // Get the total number of passes.
         int passes() const {
-            return depthPasses() + firstOverlayPass;
+            return depthPasses() + numOverlayPasses;
         }
 
         // Get whether any passes use the depth buffer.
@@ -56,13 +43,50 @@ namespace vlkx {
         RendererConfig(const RendererConfig&) = default;
 
     private:
-        Attachment swapchainImage { "Swapchain" };
-        Attachment multisampleImage { "Multisample" };
-        Attachment stencilImage { "Depth-Stencil" };
+        int numOpaquePasses = 0;
+        int numTransparentPasses = 0;
+        int numOverlayPasses = 0;
+    };
 
-        int firstOpaquePass = 0;
-        int firstTransparentPass = 0;
-        int firstOverlayPass = 0;
+    /**
+     * Stores all of the information required to use an attachment.
+     * This is heavy, so is only used when the image is being finalized.
+     */
+    struct AttachmentConfig {
+        AttachmentConfig(std::string_view name, std::optional<int>* index)
+        : name(name), index(*index) {}
+
+        AttachmentConfig& setOps(const RenderPassBuilder::Attachment::OpsType& ops) {
+            loadStoreOps = ops;
+            return *this;
+        }
+
+        AttachmentConfig& setUsage(const ImageUsage& final) {
+            finalUsage = final;
+            return *this;
+        }
+
+        std::string name;
+        std::optional<int>& index;
+        std::optional<RenderPassBuilder::Attachment::OpsType> loadStoreOps;
+        std::optional<ImageUsage> finalUsage;
+    };
+
+    /**
+     * A lighter version of the Attachment, used primarily in the On-Screen Pass Manager.
+     */
+    struct Attachment {
+        explicit Attachment(std::string_view image) : name(image) {}
+
+        // Adds the image to the tracker and initializes state.
+        void add(MultiImageTracker& tracker, const Image& image) {
+            tracker.track(name, image.getUsage());
+        }
+
+        AttachmentConfig makeConfig() { return { name, &index }; }
+
+        const std::string name;
+        std::optional<int> index;
     };
 
     // Manages Render Passes that will output to the screen.
@@ -85,8 +109,20 @@ namespace vlkx {
         void preparePassBuilder();
 
         const RendererConfig config;
-        std::unique_ptr<VkTools::VlkxImage> depthStencilImage;
+
+        Attachment swapchainInfo { "Swapchain" };
+        Attachment multisampleInfo { "Multisample" };
+        Attachment depthStencilInfo { "Depth-Stencil" };
+
+        std::unique_ptr<vlkx::Image> depthStencilImage;
         std::unique_ptr<vlkx::RenderPassBuilder> passBuilder;
         std::unique_ptr<vlkx::RenderPass> pass;
     };
+
+    /**
+     * A utility namespace used to house a constructor for creating a "simple" render pass with all the defaults.
+     */
+    namespace SimpleRenderPass {
+        static std::unique_ptr<RenderPassBuilder> createBuilder(int framebuffers, const RendererConfig& config, const AttachmentConfig& color, const AttachmentConfig* multisample, const AttachmentConfig* depthStencil, MultiImageTracker& tracker);
+    }
 }

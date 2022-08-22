@@ -7,6 +7,7 @@
 #include <variant>
 #include <optional>
 #include "vlkx/vulkan/Tools.h"
+#include "vlkx/vulkan/abstraction/Image.h"
 
 namespace vlkx {
 
@@ -202,7 +203,7 @@ namespace vlkx {
         // Set an attachment description in the render pass
         fluent setAttachment(int idx, const Attachment& attachment);
         // Update the image backing an attachment. The function must be executable during execute() later on.
-        fluent updateAttachmentBacking(int idx, std::function<const VkTools::VlkxImage&(int idx)>&& getBacking);
+        fluent updateAttachmentBacking(int idx, std::function<const Image&(int idx)>&& getBacking);
         // Set a specific subpass. Use the static parse methods to create these vectors.
         fluent setSubpass(int idx, std::vector<VkAttachmentReference>&& color, std::vector<VkAttachmentReference>&& multisample, VkAttachmentReference& depthStencil);
         // Add a dependency between two subpasses.
@@ -218,7 +219,7 @@ namespace vlkx {
         // Descriptions of used attachments
         std::vector<VkAttachmentDescription> attachmentDescriptors;
         // Functions to return attachment images.
-        std::vector<std::function<const VkTools::VlkxImage&(int idx)>> attachmentGetters;
+        std::vector<std::function<const Image&(int idx)>> attachmentGetters;
         // Values to clear all attachments
         std::vector<VkClearValue> clearValues;
         // Descriptions of subpasses.
