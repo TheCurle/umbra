@@ -27,9 +27,9 @@ namespace VkTools {
         VmaAllocation allocation;
     };
 
-    ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent, VkDevice device);
-    VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode);
-    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, VkDevice device);
+    ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent);
+    VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode, uint32_t mipping);
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers, VkDevice device);
     ManagedBuffer createGPUBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice logicalDevice, VkPhysicalDevice physicalDevice, bool hostVisible = true);
     uint32_t findMemoryIndex(uint32_t type, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
     VkCommandBuffer createTempCommandBuffer(VkCommandPool pool, VkDevice logical);
@@ -40,7 +40,7 @@ namespace VkTools {
 
 #define VKTOOLS_IMPLEMENTATION
     #ifdef VKTOOLS_IMPLEMENTATION
-    ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent, VkDevice device) {
+    ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent) {
         // Set up image metadata
         VkImageCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -64,18 +64,17 @@ namespace VkTools {
         vmaCreateImage(g_allocator, &info, &allocateInfo, &image.image, &image.allocation, nullptr);
 
         return image;
-
     }
 
-    VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode) {
-        VkSamplerCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        info.pNext = nullptr;
-        info.magFilter = filters;
-        info.minFilter = filters;
-        info.addressModeU = mode;
-        info.addressModeV = mode;
-        info.addressModeW = mode;
+    VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode, uint32_t mipping) {
+        VkSamplerCreateInfo info = {
+                VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                nullptr, {}, filters, filters,
+                VK_SAMPLER_MIPMAP_MODE_LINEAR, mode, mode, mode,
+                0, VK_TRUE, 16, VK_FALSE,
+                VK_COMPARE_OP_ALWAYS, 0, static_cast<float>(mipping),
+                VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE
+        };
 
         VkSampler sampler;
         vkCreateSampler(g_Device, &info, nullptr, &sampler);
@@ -83,20 +82,20 @@ namespace VkTools {
         return sampler;
     }
 
-    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, VkDevice device) {
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers, VkDevice device) {
         // Raw information about the image
         VkImageViewCreateInfo viewInfo = {};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.viewType = layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_CUBE;
         viewInfo.format = format;
 
         // Information about the things we want to create - size, mip levels.
         viewInfo.subresourceRange.aspectMask = flags;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.levelCount = mipping;
         viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
+        viewInfo.subresourceRange.layerCount = layers;
 
         VkImageView imageView;
         if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)

@@ -63,6 +63,39 @@ namespace vlkx {
             return type == other.type && access == other.access && location == other.location;
         }
 
+        VkImageUsageFlagBits getUsageFlags() const {
+            switch (type) {
+                case Type::DontCare: throw std::runtime_error("No usage for type DontCare");
+                case Type::RenderTarget:
+                case Type::Multisample:
+                case Type::Presentation:
+                    return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                case Type::DepthStencil:
+                    return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+                case Type::LinearAccess:
+                    return VK_IMAGE_USAGE_STORAGE_BIT;
+                case Type::Sampled:
+                    return VK_IMAGE_USAGE_SAMPLED_BIT;
+                case Type::Transfer:
+                    switch (access) {
+                        case Access::DontCare: throw std::runtime_error("No access type specified for transfer usage.");
+                        case Access::ReadOnly: return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+                        case Access::WriteOnly: return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+                        case Access::ReadWrite: throw std::runtime_error("ReadWrite access type for Transfer usage is invalid.");
+                    }
+            }
+        }
+
+        static VkImageUsageFlags getFlagsForUsage(std::vector<const ImageUsage> usages) {
+            auto flags = 0;
+            for (const auto& usage : usages) {
+                if (usage.type != Type::DontCare)
+                    flags |= usage.getUsageFlags();
+            }
+
+            return static_cast<VkImageUsageFlags>(flags);
+        }
+
         VkImageLayout getLayout() const {
             switch (type) {
                 case Type::DontCare: return VK_IMAGE_LAYOUT_UNDEFINED;

@@ -36,7 +36,7 @@ namespace shadowutil {
         static RefCounter get(const std::string& identifier, Args&&... args) {
             auto iter = getMap().find(identifier);
             if (iter == getMap().end()) {
-                const auto inserted = getMap().insert({ identifier, typename ObjectPool::CountedObject {.object = std::make_unique<ObjectType>(std::forward(args)...), .references = 0} });
+                const auto inserted = getMap().insert({ identifier, typename ObjectPool::CountedObject { .object = std::make_unique<ObjectType>(std::forward(args)...), .references = 0 } });
                 iter = inserted.first;
             }
 
