@@ -1,6 +1,7 @@
 #include <vlkx/render/render_pass/GenericRenderPass.h>
 #include <memory>
 #include <string>
+#include "vlkx/vulkan/VulkanManager.h"
 
 namespace vlkx {
 
@@ -165,7 +166,7 @@ namespace vlkx {
         attachmentDescriptors.at(idx) = buildAttachment(attachment);
 
         if (attachmentDescriptors.size() > attachmentGetters.size())
-            attachmentGetters.resize(attachmentDescriptors.size() + 1);
+            attachmentGetters.resize(attachmentDescriptors.size());
 
         return *this;
     }
@@ -190,10 +191,7 @@ namespace vlkx {
             std::move(color), std::move(multisample), depthStencil
         };
 
-        if (idx > subpassAttachments.size())
-            subpassAttachments.resize(idx + 1);
-        subpassAttachments.at(idx) = std::move(attachments);
-
+        subpassAttachments.emplace_back(attachments);
         return *this;
     }
 

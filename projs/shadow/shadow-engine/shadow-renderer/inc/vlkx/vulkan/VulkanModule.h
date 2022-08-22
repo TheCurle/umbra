@@ -3,9 +3,6 @@
 #include <vlkx/vulkan/ValidationAndExtension.h>
 #include <vlkx/vulkan/VulkanDevice.h>
 #include <vlkx/vulkan/SwapChain.h>
-#include <vlkx/render/framebuffer/RenderPass.h>
-#include <vlkx/render/texture/RenderTexture.h>
-#include <vlkx/vulkan/CommandBuffer.h>
 
 #include <vulkan/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -61,15 +58,12 @@ public:
 	// Cleanup after the application has closed.
 	void cleanup();
 
-	void useRayTrace() { rayTraceMode = true; }
-
 	VkInstance getVulkan() { return vulkan; }
 	VulkanDevice* getDevice() { return device; }
 	SwapChain* getSwapchain() { return swapchain; }
-	RenderPass* getRenderPass() { return renderPass; }
-	VkCommandBuffer getCurrentCommandBuffer() { return currentCommandBuffer; }
 	VmaAllocator getAllocator() { return allocator; }
-	RenderTexture* getRenderTarget() { return renderTexture; }
+
+    int getMaxFrames() { return MAX_FRAMES; }
 
 private:
     // To keep track of the window during... stuff
@@ -81,36 +75,16 @@ private:
 	VulkanDevice* device{};
 	// To handle the framebuffers
 	SwapChain* swapchain{};
-	// To handle the timing of rendering
-	RenderPass* renderPass{};
 
 	// To handle automatic management of memory.
 	VmaAllocator allocator{};
-
-	// The default RenderTexture, mirroring the SwapChain to the viewport.
-	RenderTexture* renderTexture;
-	// The command buffers used when telling the firmware to do things for us.
-	CommandBuffer* buffers{};
 
 	// To manage the Vulkan context that was passed to us by the API
 	VkInstance vulkan{};
 	// To manage the canvas that was given to us by GLFW
 	VkSurfaceKHR surface{};
 
-	// The index of the texture that is currently being used by the GPU.
-	uint32_t imageIndex = 0;
-	// The command buffer currently being used by the GPU.
-	VkCommandBuffer currentCommandBuffer{};
-
 	// The maximum number of frames that can be dealt with at a time.
 	const int MAX_FRAMES = 2; // Double-buffering requires two frames in memory
-	// Raised when a new image is available
-	VkSemaphore newImageSem{};
-	// Raised when a render is finished
-	VkSemaphore renderDoneSem{};
-	// Stores fences for frames that are currently "in flight".
-	std::vector<VkFence> inFlight;
-
-	bool rayTraceMode;
 
 };

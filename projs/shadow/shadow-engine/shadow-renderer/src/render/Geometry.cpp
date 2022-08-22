@@ -1,8 +1,8 @@
 #include <vlkx/render/Geometry.h>
 using namespace Geo;
 
-void Mesh::setTriData(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-	std::vector<Vertex> Vertices = {
+void Mesh::setTriData(std::vector<VertexAll>& vertices, std::vector<uint32_t>& indices) {
+	std::vector<VertexAll> Vertices = {
 		{ { 0.0f, -1.0f, 0.0f },{ 0.0f, 0.0f, 1.0 },{ 1.0f, 0.0f, 0.0 },{ 0.0, 1.0 } },
 		{ { 1.0f, 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0 },{ 0.0f, 1.0f, 0.0 },{ 0.0, 0.0 } },
 		{ { -1.0f, 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0 },{ 0.0f, 0.0f, 1.0 },{ 1.0, 0.0 } },
@@ -18,9 +18,9 @@ void Mesh::setTriData(std::vector<Vertex>& vertices, std::vector<uint32_t>& indi
 	indices = Indices;
 }
 
-void Mesh::setQuadData(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
+void Mesh::setQuadData(std::vector<VertexAll>& vertices, std::vector<uint32_t>& indices) {
 
-	std::vector<Vertex> Vertices = {
+	std::vector<VertexAll> Vertices = {
 		{ { -1.0f, -1.0f, 0.0f },{ 0.0f, 0.0f, 1.0 },{ 1.0f, 0.0f, 0.0 },{ 0.0, 1.0 } },
 		{ { -1.0f, 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0 },{ 0.0f, 1.0f, 0.0 },{ 0.0, 0.0 } },
 		{ { 1.0f, 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0 },{ 0.0f, 0.0f, 1.0 },{ 1.0, 0.0 } },
@@ -37,8 +37,8 @@ void Mesh::setQuadData(std::vector<Vertex>& vertices, std::vector<uint32_t>& ind
 	indices = Indices;
 }
 
-void Mesh::setCubeData(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-	std::vector<Vertex> Vertices = {
+void Mesh::setCubeData(std::vector<VertexAll>& vertices, std::vector<uint32_t>& indices) {
+	std::vector<VertexAll> Vertices = {
 		// Front
 		{ { -1.0f, -1.0f, 1.0f },{ 0.0f, 0.0f, 1.0 },{ 1.0f, 0.0f, 0.0 },{ 0.0, 1.0 } },	// 0
 		{ { -1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f, 1.0 },{ 0.0f, 1.0f, 0.0 },{ 0.0, 0.0 } },		// 1
@@ -97,8 +97,8 @@ void Mesh::setCubeData(std::vector<Vertex>& vertices, std::vector<uint32_t>& ind
 }
 
 
-void Mesh::setSphereData(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-	std::vector<Vertex> Vertices;
+void Mesh::setSphereData(std::vector<VertexAll>& vertices, std::vector<uint32_t>& indices) {
+	std::vector<VertexAll> Vertices;
 	std::vector<uint32_t> Indices;
 
 	float latitudeBands = 20.0f;
@@ -116,7 +116,7 @@ void Mesh::setSphereData(std::vector<Vertex>& vertices, std::vector<uint32_t>& i
 			float sinPhi = sin(phi);
 			float cosPhi = cos(phi);
 
-			Vertex vs;
+			VertexAll vs;
 
 			vs.texture.x = (longNumber / longitudeBands); // u
 			vs.texture.y = (latNumber / latitudeBands);   // v

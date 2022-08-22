@@ -1,5 +1,6 @@
 #include <vlkx/vulkan/abstraction/Buffer.h>
 #include "vlkx/vulkan/Tools.h"
+#include "vlkx/vulkan/VulkanManager.h"
 
 namespace vlkx {
 
@@ -150,7 +151,7 @@ namespace vlkx {
     }
 
     StaticPerVertexBuffer::StaticPerVertexBuffer(const vlkx::PerVertexBuffer::BufferDataMeta &info,
-                                                 std::vector<Attribute> &&attrs) : PerVertexBuffer(std::move(attrs)) {
+                                                 std::vector<VkVertexInputAttributeDescription> &&attrs) : PerVertexBuffer(std::move(attrs)) {
         const BulkCopyMeta copy = info.prepareCopy(this);
         create(copy.length, false, info.hasIndices());
         const StagingBuffer staging(copy);
@@ -169,7 +170,7 @@ namespace vlkx {
     }
 
     StaticPerInstanceBuffer::StaticPerInstanceBuffer(uint32_t size, const void *data, uint32_t instances,
-                                                     std::vector<Attribute> &&attrs) : PerInstanceVertexBuffer(size, std::move(attrs)) {
+                                                     std::vector<VkVertexInputAttributeDescription> &&attrs) : PerInstanceVertexBuffer(size, std::move(attrs)) {
         const uint32_t totalSize = size * instances;
         create(totalSize, false, false);
 

@@ -89,14 +89,22 @@ void SwapChain::create(VkSurfaceKHR surface) {
 	if (vkCreateSwapchainKHR(VulkanModule::getInstance()->getDevice()->logical, &createInfo, nullptr, &swapChain))
 		throw std::runtime_error("Failed to create swap-chain");
 
-	// Fetch our images from the swapchain
-	vkGetSwapchainImagesKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, &imageCount, nullptr);
-	images.resize(imageCount);
-	vkGetSwapchainImagesKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, &imageCount, images.data());
+    // Set members
+    format = chosenFormat.format;
+    extent = chosenExtent;
 
-	// Set gloabls
-	format = chosenFormat.format;
-	extent = chosenExtent;
+	// Fetch our images from the swapchain
+
+    uint32_t swapchainImgCount = 0;
+	vkGetSwapchainImagesKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, &swapchainImgCount, nullptr);
+
+    std::vector<VkImage> swapchainImgs(swapchainImgCount);
+	vkGetSwapchainImagesKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, &swapchainImgCount, swapchainImgs.data());
+
+    for (const auto& img : swapchainImgs) {
+        images.emplace_back(std::make_unique<vlkx::SwapchainImage>(img, extent, format));
+    }
+
 }
 
 void SwapChain::destroy() {

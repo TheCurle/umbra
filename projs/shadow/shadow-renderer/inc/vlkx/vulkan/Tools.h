@@ -4,18 +4,12 @@
 #include <functional>
 
 #include <vulkan/vulkan.h>
-#include <vlkx/vulkan/VulkanManager.h>
-
+#include <vlkx/vulkan/VulkanDevice.h>
 #include <vulkan/vk_mem_alloc.h>
 
 namespace VkTools {
-    extern VmaAllocator             g_allocator;
-    extern VkInstance               g_Instance;
-    extern VkPhysicalDevice         g_PhysicalDevice;
-    extern VkDevice                 g_Device;
-    extern uint32_t                 g_QueueFamily;
-    extern VkQueue                  g_Queue;
-    extern VkDebugReportCallbackEXT g_DebugReport;
+    extern VmaAllocator g_allocator;
+    extern VkDevice g_Device;
 
     struct ManagedImage {
         VkImage image;
@@ -28,17 +22,24 @@ namespace VkTools {
     };
 
     ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent);
+
     VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode, uint32_t mipping);
-    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers, VkDevice device);
-    ManagedBuffer createGPUBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkDevice logicalDevice, VkPhysicalDevice physicalDevice, bool hostVisible = true);
-    uint32_t findMemoryIndex(uint32_t type, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice);
-    VkCommandBuffer createTempCommandBuffer(VkCommandPool pool, VkDevice logical);
-    void executeAndDeleteTempBuffer(VkCommandBuffer buffer, VkCommandPool pool, VkQueue queue, VkDevice logicalDevice);
-    void immediateExecute(const std::function<void(VkCommandBuffer&)>& execute, VulkanDevice* dev);
-    void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VulkanDevice* dev);
 
+    VkImageView
+    createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers,
+                    VkDevice device);
 
-#define VKTOOLS_IMPLEMENTATION
+    ManagedBuffer createGPUBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                                  VkDevice logicalDevice, VkPhysicalDevice physicalDevice, bool hostVisible = true);
+
+    void immediateExecute(const std::function<void(const VkCommandBuffer &)> &execute, VulkanDevice *dev);
+
+    void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VulkanDevice *dev);
+}
+
+#include "vlkx/vulkan/abstraction/Commands.h"
+namespace VkTools {
+
     #ifdef VKTOOLS_IMPLEMENTATION
     ManagedImage createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent) {
         // Set up image metadata
@@ -139,72 +140,13 @@ namespace VkTools {
         throw std::runtime_error("Unable to find a suitable memory type on the physical device.");
     }
 
-    VkCommandBuffer createTempCommandBuffer(VkCommandPool pool, VkDevice logical) {
-        // Prepare to allocate a command buffer
-        VkCommandBufferAllocateInfo allocateInfo = {};
-        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocateInfo.commandPool = pool;
-        allocateInfo.commandBufferCount = 1;
-
-        // Allocate the buffer
-        VkCommandBuffer buffer;
-        vkAllocateCommandBuffers(logical, &allocateInfo, &buffer);
-
-        // Prepare to begin the new buffer.
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        // Begin listening on the new buffer.
-        vkBeginCommandBuffer(buffer, &beginInfo);
-
-        return buffer;
-    }
-
-    void executeAndDeleteTempBuffer(VkCommandBuffer buffer, VkCommandPool pool, VkQueue queue, VkDevice logicalDevice) {
-        // Stop listening on the buffer
-        vkEndCommandBuffer(buffer);
-
-        // Prepare to execute the commands in the buffer
-        VkSubmitInfo submitInfo = {};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &buffer;
-
-        // Submit the commands to be executed
-        vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-
-        // Wait for the GPU to finish executing
-        vkQueueWaitIdle(queue);
-
-        // Delete the now unusable buffers
-        vkFreeCommandBuffers(logicalDevice, pool, 1, &buffer);
-    }
-
-    void immediateExecute(const std::function<void(VkCommandBuffer&)>& execute, VulkanDevice* dev) {
-        VkCommandPool pool;
-        VkCommandPoolCreateInfo poolCreateInfo = {};
-        poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolCreateInfo.queueFamilyIndex = dev->getQueues().graphics;
-        poolCreateInfo.flags = 0;
-
-        // Create the pool
-        if (vkCreateCommandPool(dev->logical, &poolCreateInfo, nullptr, &pool) != VK_SUCCESS)
-            throw std::runtime_error("Unable to allocate a temporary command pool");
-
-        VkCommandBuffer buffer = VkTools::createTempCommandBuffer(pool, dev->logical);
-
-        execute(buffer);
-
-        VkTools::executeAndDeleteTempBuffer(buffer, pool, dev->graphicsQueue, dev->logical);
-
-        vkDestroyCommandPool(dev->logical, pool, nullptr);
-
+    void immediateExecute(const std::function<void(const VkCommandBuffer&)>& execute, VulkanDevice* dev) {
+        vlkx::ImmediateCommand cmd({ dev->graphicsQueue, dev->queueData.graphics });
+        cmd.run(execute);
     }
 
     void copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VulkanDevice* dev) {
-        immediateExecute([&](VkCommandBuffer& commands) {
+        immediateExecute([&](const VkCommandBuffer& commands) {
             // Prepare to copy the data between buffers
             VkBufferCopy copyInfo = {};
             copyInfo.srcOffset = 0;
@@ -213,7 +155,6 @@ namespace VkTools {
 
             // Copy the data.
             vkCmdCopyBuffer(commands, source, dest, 1, &copyInfo);
-
         }, dev);
     }
 

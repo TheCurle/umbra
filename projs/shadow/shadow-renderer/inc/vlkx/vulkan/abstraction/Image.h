@@ -2,7 +2,7 @@
 
 #include <vlkx/vulkan/Tools.h>
 #include "ImageUsage.h"
-#include "shadow/util/RefCounter.h"
+#include <shadow/util/RefCounter.h>
 #include <vlkx/vulkan/abstraction/Buffer.h>
 
 #include <utility>
@@ -44,9 +44,9 @@ namespace vlkx {
 
         int getLayers() const { return type == Type::Single ? 1 : 6; }
 
-    private:
         ImageDescriptor(Type t, const Dimension& d, const void* ptr) : type(t), dimensions(d), data(ptr) {}
 
+    private:
         Type type;
         Dimension dimensions;
         const void* data;
@@ -71,7 +71,7 @@ namespace vlkx {
         ImageBuffer& operator=(const ImageBuffer&) = delete;
 
         ~ImageBuffer() override {
-            vmaDestroyImage(VulkanManager::getInstance()->getAllocator(), image.image, image.allocation);
+            vmaDestroyImage(VkTools::g_allocator, image.image, image.allocation);
         }
 
         const VkTools::ManagedImage& get() const { return image; }
@@ -94,7 +94,7 @@ namespace vlkx {
         Image& operator=(const Image&) = delete;
 
         virtual ~Image() {
-            vkDestroyImageView(VulkanManager::getInstance()->getDevice()->logical, view, nullptr);
+            vkDestroyImageView(dev->logical, view, nullptr);
         }
 
         static VkDescriptorType getSampleType() { return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; }
@@ -102,9 +102,9 @@ namespace vlkx {
 
         static ImageDescriptor loadSingleFromDisk(std::string path, bool flipY);
         // The following are left unimplemented intentionally.
-        static ImageDescriptor loadSingleFromVFS(std::string path, bool flipY);
-        static ImageDescriptor loadCubeFromDisk(std::string directory, const std::array<std::string, 6>& files, bool flipY);
-        static ImageDescriptor loadCubeFromVFS(std::string directory, const std::array<std::string, 6>& files, bool flipY);
+        //static ImageDescriptor loadSingleFromVFS(std::string path, bool flipY);
+        //static ImageDescriptor loadCubeFromDisk(std::string directory, const std::array<std::string, 6>& files, bool flipY);
+        //static ImageDescriptor loadCubeFromVFS(std::string directory, const std::array<std::string, 6>& files, bool flipY);
 
         virtual ImageUsage getUsage() const { return ImageUsage {}; }
 
@@ -120,10 +120,11 @@ namespace vlkx {
 
 
     protected:
-        Image(const VkExtent2D& ext, VkFormat form) : extent(ext), format(form) {}
+        Image(const VkExtent2D& ext, VkFormat form);
 
         void setView(const VkImageView& imgView) { view = imgView; }
 
+        VulkanDevice* dev;
         VkImageView view;
         VkExtent2D extent;
         VkFormat format;
@@ -146,13 +147,14 @@ namespace vlkx {
         ImageSampler& operator=(const ImageSampler&) = delete;
 
         ~ImageSampler() {
-            vkDestroySampler(VulkanManager::getInstance()->getDevice()->logical, sampler, nullptr);
+            vkDestroySampler(dev->logical, sampler, nullptr);
         }
 
         const VkSampler& operator*() const { return sampler; }
 
     private:
         VkSampler sampler;
+        VulkanDevice* dev;
     };
 
     // Root of images which can be sampled.
@@ -283,11 +285,12 @@ namespace vlkx {
 
         SwapchainImage(const VkImage& image, const VkExtent2D& extent, VkFormat format);
 
-        const VkTools::ManagedImage& get() const override { return { image, nullptr };}
+        const VkTools::ManagedImage& get() const override { return managed; }
         const VkImage& getImage() const override { return image; }
 
     private:
         VkImage image;
+        VkTools::ManagedImage managed;
     };
 
     class MultisampleImage : public Image {

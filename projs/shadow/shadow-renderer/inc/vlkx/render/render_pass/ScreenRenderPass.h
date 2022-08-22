@@ -42,9 +42,9 @@ namespace vlkx {
         RendererConfig(RendererConfig&) noexcept = default;
         RendererConfig(const RendererConfig&) = default;
 
-    private:
         int numOpaquePasses = 0;
         int numTransparentPasses = 0;
+    private:
         int numOverlayPasses = 0;
     };
 
@@ -102,6 +102,8 @@ namespace vlkx {
 
         // Initialize the render pass we're managing.
         void initializeRenderPass();
+
+        std::unique_ptr<vlkx::RenderPass>& getPass() { return pass; }
 
     private:
 

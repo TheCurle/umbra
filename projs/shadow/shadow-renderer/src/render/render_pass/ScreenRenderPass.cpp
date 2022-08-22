@@ -1,6 +1,7 @@
 #include <vlkx/render/render_pass/ScreenRenderPass.h>
 #include <vlkx/vulkan/abstraction/Image.h>
 #include "vlkx/render/render_pass/GPUPass.h"
+#include "vlkx/vulkan/VulkanManager.h"
 
 namespace vlkx {
 
@@ -74,7 +75,7 @@ namespace vlkx {
 
         if (usesMultisample) {
             addAttachment(*multisample, graphicsPass, tracker, getLocation, [&](UsageTracker& history) {
-                history.add(first, last, ImageUsage::renderTarget(0));
+                history.add(firstPass, lastPass, ImageUsage::renderTarget(0));
             });
             graphicsPass.addMultisample(multisample->name, color.name, lastPass);
         }
@@ -83,13 +84,13 @@ namespace vlkx {
             addAttachment(*depthStencil, graphicsPass, tracker, getLocation, [&](UsageTracker& history) {
                 if (config.numOpaquePasses > 0) {
                     const int lastOpaque = config.numOpaquePasses - 1;
-                    history.add(first, lastOpaque, ImageUsage::depthStencil(Access::ReadWrite));
+                    history.add(firstPass, lastOpaque, ImageUsage::depthStencil(ImageUsage::Access::ReadWrite));
                 }
 
                 if (config.numTransparentPasses > 0) {
                     const int firstTransparent = config.numOpaquePasses;
                     const int lastTransparent = firstTransparent + config.numTransparentPasses - 1;
-                    history.add(firstTransparent, lastTransparent, ImageUsage::depthStencil(Access::ReadOnly));
+                    history.add(firstTransparent, lastTransparent, ImageUsage::depthStencil(ImageUsage::Access::ReadOnly));
                 }
             });
 
@@ -106,7 +107,7 @@ namespace vlkx {
             preparePassBuilder();
 
         passBuilder->updateAttachmentBacking(swapchainInfo.index.value(), [this](int index) -> const Image& {
-            return VulkanManager::getInstance()->getSwapchain()->images[index];
+            return *VulkanManager::getInstance()->getSwapchain()->images[index];
         });
 
         if (depthStencilImage != nullptr)
@@ -122,7 +123,7 @@ namespace vlkx {
         const bool usesMultisampling = false;
 
         MultiImageTracker tracker;
-        swapchainInfo.add(tracker, VulkanManager::getInstance()->getSwapchain()->images[0]);
+        swapchainInfo.add(tracker, *VulkanManager::getInstance()->getSwapchain()->images[0]);
         if (usesDepth)
             depthStencilInfo.add(tracker, *depthStencilImage);
         if (usesMultisampling)

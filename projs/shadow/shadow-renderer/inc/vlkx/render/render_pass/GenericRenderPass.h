@@ -18,6 +18,8 @@ namespace vlkx {
      */
     class RenderPass {
     public:
+        using RenderFunc = std::function<void(const VkCommandBuffer& buffer)>;
+
         // Delete copy and move constructors to prevent the GPU getting confused with what we're trying to do
         RenderPass(const RenderPass&) = delete;
         RenderPass& operator=(const RenderPass&) = delete;
@@ -26,6 +28,8 @@ namespace vlkx {
         RenderPass(int subpasses, VkRenderPass pass, std::vector<VkClearValue> clear, VkExtent2D ext, std::vector<VkFramebuffer> fbs, std::vector<int> attachs)
             : subpassCount(subpasses), renderPass(pass), clearValues(std::move(clear)), extent(ext), framebuffers(std::move(fbs)), attachments(std::move(attachs)) {}
 
+        const VkRenderPass& operator*() const { return renderPass; }
+
         /**
          * Upload all of the subpass render commands to the command buffer.
          * The size of ops must be equal to the number of subpasses in this render pass.
@@ -33,7 +37,7 @@ namespace vlkx {
          * @param imageIndex the index of the image on the swapchain that we're rendering to; the target framebuffer.
          * @param ops the render operations to add onto the command buffer.
          */
-        void execute(const VkCommandBuffer& commands, int imageIndex, std::vector<std::function<void(const VkCommandBuffer& commandBuffer)>> ops) const;
+        void execute(const VkCommandBuffer& commands, int imageIndex, std::vector<RenderFunc> ops) const;
 
     private:
         // The number of sub-render-passes in this pass.

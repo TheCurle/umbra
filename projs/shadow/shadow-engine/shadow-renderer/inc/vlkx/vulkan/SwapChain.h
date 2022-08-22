@@ -15,7 +15,8 @@ public:
 	VkFormat format;
 	VkExtent2D extent;
 
-	std::vector<vlkx::Image> images;
+	std::vector<std::unique_ptr<vlkx::Image>> images;
+    std::unique_ptr<vlkx::Image> multisampleImg;
 
 	VkSurfaceFormatKHR chooseFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseMode(const std::vector<VkPresentModeKHR>& availableModes);

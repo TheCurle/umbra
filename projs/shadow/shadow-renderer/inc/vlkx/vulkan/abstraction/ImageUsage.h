@@ -36,7 +36,7 @@ namespace vlkx {
         enum class Location {
             DontCare,           // Image is unused
             Host,               // Image only exists on the host and will be transferred.
-            VertexShader,       // Image is only used in the Vertex Shader.
+            VertexShader,       // Image is only used in the VertexAll Shader.
             FragmentShader,     // Image is only used in the Fragment Shader.
             ComputeShader,      // Image is only used in a Compute Shader.
             Other,              // Reserved.
@@ -130,7 +130,7 @@ namespace vlkx {
 
                         case Location::VertexShader:
                         case Location::Other:
-                            throw std::runtime_error("Linear or sampled attachments must not be used in Vertex or Other stages.");
+                            throw std::runtime_error("Linear or sampled attachments must not be used in VertexAll or Other stages.");
                         case Location::DontCare: throw std::runtime_error("Linear or sampled attachments must have an access.");
                     }
 

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanDevice.h>
 #include <variant>
+#include <vector>
+#include "vlkx/vulkan/Tools.h"
 
 namespace vlkx {
     // Root buffer class.
@@ -27,10 +29,10 @@ namespace vlkx {
         Buffer(const Buffer&) = delete;
         Buffer& operator=(const Buffer&) = delete;
 
-        Buffer() = default;
+        Buffer();
 
         virtual ~Buffer() {
-            vkFreeMemory(VulkanManager::getInstance()->getDevice()->logical, memory, nullptr);
+            vkFreeMemory(device->logical, memory, nullptr);
         }
 
     protected:
@@ -41,6 +43,7 @@ namespace vlkx {
         const VkDeviceMemory& getMemory() const { return memory; }
     private:
         VkDeviceMemory memory;
+        VulkanDevice* device;
     };
 
     /*******************************************/
@@ -59,7 +62,7 @@ namespace vlkx {
         DataBuffer() = default;
 
         ~DataBuffer() override {
-            vmaDestroyBuffer(VulkanManager::getInstance()->getAllocator(), managed.buffer, managed.allocation);
+            vmaDestroyBuffer(VkTools::g_allocator, managed.buffer, managed.allocation);
         }
 
     protected:
@@ -92,11 +95,6 @@ namespace vlkx {
     // Provides utilities for subclasses.
     class VertexBuffer : public DataBuffer {
     public:
-        struct Attribute {
-            uint32_t offset;
-            VkFormat format;
-        };
-
         VertexBuffer(const VertexBuffer&) = delete;
         VertexBuffer& operator=(const VertexBuffer&) = delete;
 
@@ -111,7 +109,7 @@ namespace vlkx {
     protected:
         friend class DynamicBuffer;
 
-        explicit VertexBuffer(std::vector<Attribute>&& attrs) : DataBuffer(), attributes(attrs) {}
+        explicit VertexBuffer(std::vector<VkVertexInputAttributeDescription>&& attrs) : DataBuffer(), attributes(attrs) {}
 
         // Initialize device memory and the managed buffer.
         // indices and vertexes are put in the same buffer.
@@ -119,7 +117,7 @@ namespace vlkx {
         // otherwise, the buffer is device local.
         void create(VkDeviceSize totalSize, bool dynamic, bool indexes);
 
-        const std::vector<Attribute> attributes;
+        const std::vector<VkVertexInputAttributeDescription> attributes;
     };
 
     /*******************************************/
@@ -191,7 +189,7 @@ namespace vlkx {
             explicit NoIndexBufferMeta(std::vector<VertexDataMeta>&& perVertex) : perMeshVertices(perVertex) {}
 
             BulkCopyMeta prepareCopy(PerVertexBuffer* buffer) const override;
-            bool hasIndices() const override;
+            bool hasIndices() const override { return false; };
         private:
             const std::vector<VertexDataMeta> perMeshVertices;
         };
@@ -203,7 +201,7 @@ namespace vlkx {
                                                                                                                 perMeshVertex(perVertex),
                                                                                                                 sharedIndices(sharedIndices) {}
             BulkCopyMeta prepareCopy(PerVertexBuffer* buffer) const override;
-            bool hasIndices() const override;
+            bool hasIndices() const override { return true; };
         private:
             const int meshes;
             const VertexDataMeta perMeshVertex;
@@ -221,7 +219,7 @@ namespace vlkx {
             explicit NoShareMeta(std::vector<PerMesh>&& perMesh) : perMeshMeta(std::move(perMesh)) {}
 
             BulkCopyMeta prepareCopy(PerVertexBuffer* buffer) const override;
-            bool hasIndices() const override;
+            bool hasIndices() const override { return true; };
         private:
             const std::vector<PerMesh> perMeshMeta;
         };
@@ -266,7 +264,7 @@ namespace vlkx {
     // Stores static data for one-time upload.
     class StaticPerVertexBuffer : public PerVertexBuffer {
     public:
-        StaticPerVertexBuffer(const BufferDataMeta& info, std::vector<Attribute>&& attrs);
+        StaticPerVertexBuffer(const BufferDataMeta& info, std::vector<VkVertexInputAttributeDescription>&& attrs);
 
         StaticPerVertexBuffer(const StaticPerVertexBuffer&) = delete;
         StaticPerVertexBuffer& operator=(const StaticPerVertexBuffer&) = delete;
@@ -275,7 +273,7 @@ namespace vlkx {
     // Stores host-visible data that can be reallocated.
     class DynamicPerVertexBuffer : public PerVertexBuffer, public DynamicBuffer {
     public:
-        DynamicPerVertexBuffer(size_t size, std::vector<Attribute>&& attrs) : PerVertexBuffer(std::move(attrs)), DynamicBuffer(size, true, this) {}
+        DynamicPerVertexBuffer(size_t size, std::vector<VkVertexInputAttributeDescription>&& attrs) : PerVertexBuffer(std::move(attrs)), DynamicBuffer(size, true, this) {}
 
         DynamicPerVertexBuffer(const DynamicPerVertexBuffer&) = delete;
         DynamicPerVertexBuffer& operator=(const DynamicPerVertexBuffer&) = delete;
@@ -300,7 +298,7 @@ namespace vlkx {
         uint32_t getSize() const { return sizePerInstance; }
 
     protected:
-        PerInstanceVertexBuffer(uint32_t size, std::vector<Attribute>&& attrs) : VertexBuffer(std::move(attrs)), sizePerInstance(size) {}
+        PerInstanceVertexBuffer(uint32_t size, std::vector<VkVertexInputAttributeDescription>&& attrs) : VertexBuffer(std::move(attrs)), sizePerInstance(size) {}
     private:
         const uint32_t sizePerInstance;
     };
@@ -308,10 +306,10 @@ namespace vlkx {
     // Stores vertices that are static per instance of the mesh.
     class StaticPerInstanceBuffer : public PerInstanceVertexBuffer {
     public:
-        StaticPerInstanceBuffer(uint32_t size, const void* data, uint32_t instances, std::vector<Attribute>&& attrs);
+        StaticPerInstanceBuffer(uint32_t size, const void* data, uint32_t instances, std::vector<VkVertexInputAttributeDescription>&& attrs);
 
         template <typename C>
-        StaticPerInstanceBuffer(const C& cont, std::vector<Attribute>&& attrs) : StaticPerInstanceBuffer(sizeof(cont[0]), cont.data(), CONTAINER_SIZE(cont), std::move(attrs)) {}
+        StaticPerInstanceBuffer(const C& cont, std::vector<VkVertexInputAttributeDescription>&& attrs) : StaticPerInstanceBuffer(sizeof(cont[0]), cont.data(), CONTAINER_SIZE(cont), std::move(attrs)) {}
 
         StaticPerInstanceBuffer(const StaticPerInstanceBuffer&) = delete;
         StaticPerInstanceBuffer& operator=(const StaticPerInstanceBuffer&) = delete;
@@ -320,7 +318,7 @@ namespace vlkx {
     // Stores vertices of meshes that are dynamic (ie. text, shifting meshes
     class DynamicPerInstanceBuffer : public PerInstanceVertexBuffer, public DynamicBuffer {
     public:
-        DynamicPerInstanceBuffer(uint32_t size, size_t maxInstances, std::vector<Attribute>&& attrs) : PerInstanceVertexBuffer(size, std::move(attrs)), DynamicBuffer(size * maxInstances, false, this) {}
+        DynamicPerInstanceBuffer(uint32_t size, size_t maxInstances, std::vector<VkVertexInputAttributeDescription>&& attrs) : PerInstanceVertexBuffer(size, std::move(attrs)), DynamicBuffer(size * maxInstances, false, this) {}
 
         DynamicPerInstanceBuffer(const DynamicPerInstanceBuffer&) = delete;
         DynamicPerInstanceBuffer& operator=(const DynamicPerInstanceBuffer*) = delete;

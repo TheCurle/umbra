@@ -4,6 +4,8 @@
 #include <fstream>
 
 #include <stb_image.h>
+#include "vlkx/vulkan/VulkanManager.h"
+#include <shadow/util/File.h>
 
 namespace vlkx {
     struct ImageConfig {
@@ -24,40 +26,13 @@ namespace vlkx {
         VkImageLayout layout;
     };
 
-    struct FileData {
-        size_t size;
-        std::vector<char> data;
-    };
-
     struct ImageData {
         ImageDescriptor::Dimension dimensions;
         const char* data;
     };
 
-    // A testing stub; this should be deleted and wired into the asset system once that becomes ready.
-    FileData* loadFile(std::string_view path) {
-        // Verify the file
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
-
-        if (!file.is_open())
-            throw std::runtime_error("Unable to open specified file: " + std::string(path));
-
-        auto *data = new FileData{};
-
-        // Read the file's size (opened with At The End, so just tellg the size)
-        size_t size = file.tellg();
-        data->data.resize(size);
-        // Go to the front of the file
-        file.seekg(0);
-        // Read the file into the buffer
-        file.read(data->data.data(), size);
-        file.close();
-
-        return data;
-    }
-
     ImageData loadImage(std::string_view path, int wantedChannels) {
-        FileData* data = loadFile(path);
+        shadowutil::FileData* data = shadowutil::loadFile(path);
         int width, height, channels;
 
         stbi_uc* stbData = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(data->data.data()), data->size, &width, &height, &channels, wantedChannels);
@@ -136,6 +111,10 @@ namespace vlkx {
         throw std::runtime_error("Multisampling isn't supported?");
     }
 
+    Buffer::Buffer() {
+        device = VulkanManager::getInstance()->getDevice();
+    }
+
     ImageDescriptor Image::loadSingleFromDisk(std::string path, bool flipY) {
         stbi_set_flip_vertically_on_load(flipY);
         auto image = loadImage(path, STBI_default);
@@ -146,9 +125,9 @@ namespace vlkx {
 
     TextureImage::Meta createTextureMeta(const ImageDescriptor& image, const std::vector<const ImageUsage>& usages) {
         return TextureImage::Meta {
-            image.getData(), usages,
-            findFormatForChannels(image.getChannels(), usages),
-            image.getWidth(), image.getHeight(), image.getChannels(),
+                image.getData(), usages,
+                findFormatForChannels(image.getChannels(), usages),
+                image.getWidth(), image.getHeight(), image.getChannels(),
         };
     }
 
@@ -264,6 +243,10 @@ namespace vlkx {
         }, VulkanManager::getInstance()->getDevice());
     }
 
+    Image::Image(const VkExtent2D &ext, VkFormat form) : extent(ext), format(form) {
+        dev = VulkanManager::getInstance()->getDevice();
+    }
+
     void ImageStagingBuffer::copy(const VkImage &target, const VkExtent3D &extent, uint32_t layers) const {
         VkTools::immediateExecute([&](const VkCommandBuffer& commands) {
             const VkBufferImageCopy copyData { 0, 0, 0, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers }, { 0, 0, 0 }, extent };
@@ -272,8 +255,9 @@ namespace vlkx {
     }
 
     ImageSampler::ImageSampler(int mipLevels, const vlkx::ImageSampler::Config &config)
-        : sampler(VkTools::createSampler(config.filter, config.mode, mipLevels))
-    {}
+        : sampler(VkTools::createSampler(config.filter, config.mode, mipLevels)) {
+        dev = VulkanManager::getInstance()->getDevice();
+    }
 
     Buffer::BulkCopyMeta TextureImage::Meta::getCopyMeta() const {
         const VkDeviceSize singleSize = width * height * channels;
@@ -347,11 +331,11 @@ namespace vlkx {
             mips = true;
             ident = singleTex;
             image = std::make_unique<ImageDescriptor>(Image::loadSingleFromDisk(*singleTex, false));
-        } else if (const auto* cubeTex = std::get_if<CubemapLocation>(&location); cubeTex != nullptr) {
+        } /*else if (const auto* cubeTex = std::get_if<CubemapLocation>(&location); cubeTex != nullptr) {
             mips = false;
             ident = &cubeTex->directory;
             image = std::make_unique<ImageDescriptor>(Image::loadCubeFromDisk(cubeTex->directory, cubeTex->files, false));
-        }
+        }*/
 
         return ReferenceCounter::get(*ident, mips, config, createTextureMeta(*image, usages));
     }
@@ -370,6 +354,7 @@ namespace vlkx {
 
     SwapchainImage::SwapchainImage(const VkImage &image, const VkExtent2D &extent, VkFormat format) : Image(extent, format), image(image) {
         setView(VkTools::createImageView(image, format, VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, VulkanManager::getInstance()->getDevice()->logical));
+        managed = { image, nullptr };
     }
 
     std::unique_ptr<Image> MultisampleImage::createColor(const vlkx::Image &targetImage, vlkx::MultisampleImage::Mode mode) {
