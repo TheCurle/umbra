@@ -95,7 +95,7 @@ namespace vlkx {
         layoutInfo.emplace(VkPipelineLayoutCreateInfo {
             VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             nullptr, 0, static_cast<uint32_t>(descLayouts.size()), descLayouts.data(),
-            static_cast<uint32_t>(pushConstants.size()), pushConstants.data()
+            static_cast<uint32_t>(constants.size()), constants.data()
         });
     }
 

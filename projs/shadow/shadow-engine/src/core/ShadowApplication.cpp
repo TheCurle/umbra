@@ -207,8 +207,7 @@ namespace ShadowEngine {
                             pipeline->bind(commands);
                             alphaPush->upload(commands, pipeline->getLayout(), frame, 0, VK_SHADER_STAGE_FRAGMENT_BIT);
                             vertexBuffer->draw(commands, 0, 0, 1);
-                        },
-                        [](const VkCommandBuffer& commands) {
+
                             imGuiStartDraw();
 
                             bool showDemo = true;
