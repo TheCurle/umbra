@@ -112,6 +112,9 @@ std::optional<VkResult> vlkx::RenderCommand::execute(int frame, const VkSwapchai
                     std::numeric_limits<uint64_t>::max()
     );
 
+    if (update != nullptr)
+        update(frame);
+
     uint32_t nextFrame;
     // Prepare for a new frame to start
     const auto result = parseResult(vkAcquireNextImageKHR(logical, VulkanManager::getInstance()->getSwapchain()->swapChain,

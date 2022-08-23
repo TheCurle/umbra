@@ -170,7 +170,7 @@ namespace ShadowEngine {
     }
 
     void updateData(int frame) {
-        alphaPush->getData<AlphaVal>(frame)->value = glm::abs(glm::sin(Time::timeSinceStart));
+        alphaPush->getData<AlphaVal>(frame)->value = 1;// glm::abs(glm::sin(Time::timeSinceStart));
     }
 
     void imGuiStartDraw() {

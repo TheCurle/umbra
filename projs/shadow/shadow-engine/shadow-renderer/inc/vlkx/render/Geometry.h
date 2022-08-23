@@ -85,7 +85,7 @@ namespace Geo {
         static VkVertexInputBindingDescription getBindingDesc() {
             VkVertexInputBindingDescription desc = {};
             desc.binding = 0;
-            desc.stride = sizeof(VertexAll);
+            desc.stride = sizeof(VertexColor);
             desc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
             return desc;
