@@ -131,8 +131,8 @@ std::optional<VkResult> vlkx::RenderCommand::execute(int frame, const VkSwapchai
 
     vkResetFences(logical, 1, &inFlight[imageIndex]);
 
-    if (vkQueueSubmit(VulkanManager::getInstance()->getDevice()->graphicsQueue, 1, &submit, inFlight[imageIndex]) != VK_SUCCESS)
-        throw std::runtime_error("Failed to submit commands");
+    if (VkResult res = vkQueueSubmit(VulkanManager::getInstance()->getDevice()->graphicsQueue, 1, &submit, inFlight[imageIndex]); res != VK_SUCCESS)
+        throw std::runtime_error("Failed to submit commands: " + std::to_string(res));
 
     const VkPresentInfoKHR present {
         VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

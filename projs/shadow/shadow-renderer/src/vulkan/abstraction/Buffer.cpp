@@ -233,7 +233,8 @@ namespace vlkx {
     void PushConstant::upload(const VkCommandBuffer &commands, const VkPipelineLayout &pipelineLayout, int frame,
                               uint32_t offset, VkShaderStageFlags stage) const {
         checkIndex(frame);
-        vkCmdPushConstants(commands, pipelineLayout, stage, offset, sizePerFrame, getData<void>(frame));
+        void* data = getData<void>(frame);
+        vkCmdPushConstants(commands, pipelineLayout, stage, offset, sizePerFrame, data);
     }
 
     void PushConstant::checkIndex(int index) const {

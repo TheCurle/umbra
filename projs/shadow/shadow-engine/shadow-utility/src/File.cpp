@@ -14,6 +14,7 @@ namespace shadowutil {
     // Read the file's size (opened with At The End, so just tellg the size)
     size_t size = file.tellg();
     data->data.resize(size);
+    data->size = size;
     // Go to the front of the file
     file.seekg(0);
     // Read the file into the buffer

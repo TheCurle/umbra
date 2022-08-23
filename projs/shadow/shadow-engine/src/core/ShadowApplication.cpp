@@ -21,7 +21,7 @@
 namespace ShadowEngine {
 
     struct AlphaVal {
-        float value;
+        alignas(sizeof(float)) float value;
     };
 
     std::unique_ptr<vlkx::ScreenRenderPassManager> passManager;

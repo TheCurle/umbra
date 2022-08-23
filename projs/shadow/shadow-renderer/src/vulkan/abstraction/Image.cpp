@@ -345,7 +345,7 @@ namespace vlkx {
     }
 
     DepthStencilImage::DepthStencilBuffer::DepthStencilBuffer(const VkExtent2D &extent, VkFormat format) : ImageBuffer() {
-        setImage(VkTools::createImage(format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, expandExtent(extent)));
+        setImage(createImage(ImageConfig {}, 0, format, expandExtent(extent), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 
         VmaAllocationInfo info;
         vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);

@@ -217,7 +217,7 @@ namespace vlkx {
                 if (iter == deps.end()) {
                     const RenderPassBuilder::SubpassDependency defaultDep {
                             { checkSubpass(sourcePass), VK_PIPELINE_STAGE_NONE_KHR, VK_ACCESS_NONE_KHR },
-                            { checkSubpass(sourcePass), VK_PIPELINE_STAGE_NONE_KHR, VK_ACCESS_NONE_KHR },
+                            { checkSubpass(pass), VK_PIPELINE_STAGE_NONE_KHR, VK_ACCESS_NONE_KHR },
                             0
                     };
 

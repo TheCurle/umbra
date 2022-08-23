@@ -397,11 +397,11 @@ namespace vlkx {
         template <typename DataType>
         DataType* getData(int frame) const {
             checkIndex(frame);
-            return reinterpret_cast<DataType*>(data + sizePerFrame * frame);
+            return reinterpret_cast<DataType*>(data + (sizePerFrame * frame));
         }
 
         VkPushConstantRange makeRange(VkShaderStageFlags stage) {
-            return VkPushConstantRange {stage, 0, sizePerFrame };
+            return VkPushConstantRange { stage, 0, sizePerFrame };
         }
 
         // Upload (flush) the uniform to the GPU
