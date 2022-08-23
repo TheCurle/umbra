@@ -4,6 +4,7 @@
 #include "ImageUsage.h"
 #include <shadow/util/RefCounter.h>
 #include <vlkx/vulkan/abstraction/Buffer.h>
+#include <array>
 
 #include <utility>
 
@@ -28,9 +29,9 @@ namespace vlkx {
         uint32_t getHeight() const { return dimensions.height; }
         uint32_t getChannels() const { return dimensions.channels; }
 
-        std::vector<const void*> getData() const {
-            if (type == Type::Single) return { data };
-            std::vector<const void*> dataPtrs;
+        std::vector<void*> getData() const {
+            if (type == Type::Single) return { (void*) data };
+            std::vector<void*> dataPtrs;
             dataPtrs.reserve(6);
 
             size_t offset = 0;
@@ -179,8 +180,8 @@ namespace vlkx {
 
             Buffer::BulkCopyMeta getCopyMeta() const;
 
-            std::vector<const void*> data;
-            std::vector<const ImageUsage> usages;
+            std::vector<void*> data;
+            std::vector<ImageUsage> usages;
             VkFormat format;
             uint32_t width;
             uint32_t height;
@@ -188,7 +189,7 @@ namespace vlkx {
         };
 
         TextureImage(bool mipmapping, const ImageSampler::Config& samplerConfig, const Meta& meta);
-        TextureImage(bool mipmapping, const ImageDescriptor& image, const std::vector<const ImageUsage>& usages, const ImageSampler::Config& config);
+        TextureImage(bool mipmapping, const ImageDescriptor& image, const std::vector<ImageUsage>& usages, const ImageSampler::Config& config);
 
         TextureImage(const TextureImage&) = delete;
         TextureImage& operator=(const TextureImage&) = delete;
@@ -234,7 +235,7 @@ namespace vlkx {
         // Reference Counting works on both individual files and cubemaps, so we put them together.
         using ImageLocation = std::variant<std::string, CubemapLocation>;
 
-        RefCountedTexture(const ImageLocation& location, std::vector<const ImageUsage> usages, const ImageSampler::Config& config) : texture(get(location, std::move(usages), config)) {}
+        RefCountedTexture(const ImageLocation& location, std::vector<ImageUsage> usages, const ImageSampler::Config& config) : texture(get(location, std::move(usages), config)) {}
 
         RefCountedTexture(RefCountedTexture&&) noexcept = default;
         RefCountedTexture& operator=(RefCountedTexture&&) noexcept = default;
@@ -248,7 +249,7 @@ namespace vlkx {
     private:
         using ReferenceCounter = shadowutil::RefCounter<TextureImage>;
         // Get or load the specified image.
-        static ReferenceCounter get(const ImageLocation& location, const std::vector<const ImageUsage>& usages, const ImageSampler::Config& config);
+        static ReferenceCounter get(const ImageLocation& location, const std::vector<ImageUsage>& usages, const ImageSampler::Config& config);
 
         ReferenceCounter texture;
     };

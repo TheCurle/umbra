@@ -1,6 +1,8 @@
 #include <vlkx/vulkan/abstraction/Commands.h>
 #include "vlkx/vulkan/VulkanManager.h"
 
+#include <limits>
+
 vlkx::CommandBuffer::CommandBuffer() {
     dev = VulkanManager::getInstance()->getDevice();
 }

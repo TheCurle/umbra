@@ -1,6 +1,7 @@
 #include <vlkx/vulkan/abstraction/Buffer.h>
 #include "vlkx/vulkan/Tools.h"
 #include "vlkx/vulkan/VulkanManager.h"
+#include <memory>
 
 namespace vlkx {
 
@@ -10,7 +11,7 @@ namespace vlkx {
         // GPU memory accessible through dst pointer
 
         for (const auto& info : meta) {
-            std::memcpy(static_cast<char*>(dst) + info.start, info.data, info.length);
+            memcpy(static_cast<char*>(dst) + info.start, info.data, info.length);
         }
 
         // Unmap GPU memory

@@ -86,7 +86,7 @@ namespace vlkx {
             }
         }
 
-        static VkImageUsageFlags getFlagsForUsage(std::vector<const ImageUsage> usages) {
+        static VkImageUsageFlags getFlagsForUsage(const std::vector<ImageUsage>& usages) {
             auto flags = 0;
             for (const auto& usage : usages) {
                 if (usage.type != Type::DontCare)
@@ -155,6 +155,8 @@ namespace vlkx {
                     return location == Location::Host ? getReadOrWrite(VK_ACCESS_HOST_READ_BIT, VK_ACCESS_HOST_WRITE_BIT) : getReadOrWrite(VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT);
                 case Type::Transfer:
                     return getReadOrWrite(VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+                case Type::InputAttachment:
+                    return 0;
             }
         };
 
@@ -169,7 +171,7 @@ namespace vlkx {
         std::optional<int> attachment;
 
         inline VkAccessFlags getReadOrWrite(VkAccessFlags read, VkAccessFlags write) const {
-            VkAccessFlags flag;
+            VkAccessFlags flag = 0;
             if (access == Access::ReadOnly || access == Access::ReadWrite)
                 flag |= read;
             if (access == Access::WriteOnly || access == Access::ReadWrite)
@@ -262,6 +264,7 @@ namespace vlkx {
         MultiImageTracker& operator=(const MultiImageTracker&) = delete;
 
         // Fluent API; chain calls in a builder pattern
+        #undef fluent
         #define fluent MultiImageTracker&
 
         fluent track(std::string&& name, const ImageUsage& usage) {

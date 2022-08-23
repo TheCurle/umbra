@@ -3,6 +3,8 @@
 #include <vulkan/vulkan_core.h>
 #include "Queue.h"
 #include <vlkx/vulkan/VulkanDevice.h>
+#include <functional>
+#include <optional>
 
 namespace vlkx {
 

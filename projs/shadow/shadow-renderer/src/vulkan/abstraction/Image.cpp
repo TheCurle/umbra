@@ -31,7 +31,7 @@ namespace vlkx {
         const char* data;
     };
 
-    ImageData loadImage(std::string_view path, int wantedChannels) {
+    ImageData loadImage(std::string path, int wantedChannels) {
         shadowutil::FileData* data = shadowutil::loadFile(path);
         int width, height, channels;
 
@@ -57,7 +57,7 @@ namespace vlkx {
         return {{ static_cast<uint32_t>(width), static_cast<uint32_t>(height), static_cast<uint32_t>(channels) },reinterpret_cast<const char *>(stbData) };
     }
 
-    std::optional<VkFormat> findFormatWith(const std::vector<const VkFormat>& formats, VkFormatFeatureFlags feature) {
+    std::optional<VkFormat> findFormatWith(const std::vector<VkFormat>& formats, VkFormatFeatureFlags feature) {
         for (const auto format : formats) {
             VkFormatProperties props;
             vkGetPhysicalDeviceFormatProperties(VulkanManager::getInstance()->getDevice()->physical, format, &props);
@@ -67,7 +67,7 @@ namespace vlkx {
         return std::nullopt;
     }
 
-    VkFormat findFormatForChannels(int channels, const std::vector<const ImageUsage>& usages, bool highPrecision = false) {
+    VkFormat findFormatForChannels(int channels, const std::vector<ImageUsage>& usages, bool highPrecision = false) {
         switch (channels) {
             case 1: {
                 VkFormat best, alternative;
@@ -123,7 +123,7 @@ namespace vlkx {
         return { ImageDescriptor::Type::Single, image.dimensions, image.data };
     }
 
-    TextureImage::Meta createTextureMeta(const ImageDescriptor& image, const std::vector<const ImageUsage>& usages) {
+    TextureImage::Meta createTextureMeta(const ImageDescriptor& image, const std::vector<ImageUsage>& usages) {
         return TextureImage::Meta {
                 image.getData(), usages,
                 findFormatForChannels(image.getChannels(), usages),
@@ -277,7 +277,7 @@ namespace vlkx {
         setView(VkTools::createImageView(buffer.getImage(), format, VK_IMAGE_ASPECT_COLOR_BIT, buffer.getMipping(), meta.data.size(), VulkanManager::getInstance()->getDevice()->logical));
     }
 
-    TextureImage::TextureImage(bool mipmapping, const ImageDescriptor &image, const std::vector<const ImageUsage>& usages, const ImageSampler::Config &config)
+    TextureImage::TextureImage(bool mipmapping, const ImageDescriptor &image, const std::vector<ImageUsage>& usages, const ImageSampler::Config &config)
         : TextureImage(mipmapping, config, createTextureMeta(image, usages))
     {}
 
@@ -322,7 +322,7 @@ namespace vlkx {
         }
     }
 
-    RefCountedTexture::ReferenceCounter RefCountedTexture::get(const vlkx::RefCountedTexture::ImageLocation &location, const std::vector<const ImageUsage>& usages, const ImageSampler::Config &config) {
+    RefCountedTexture::ReferenceCounter RefCountedTexture::get(const vlkx::RefCountedTexture::ImageLocation &location, const std::vector<ImageUsage>& usages, const ImageSampler::Config &config) {
         bool mips;
         const std::string* ident;
         std::unique_ptr<ImageDescriptor> image;

@@ -9,5 +9,5 @@ namespace shadowutil {
     };
 
     // A testing stub; this should be deleted and wired into the asset system once that becomes ready.
-    FileData* loadFile(std::string_view path);
+    FileData* loadFile(std::string path);
 }

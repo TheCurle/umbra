@@ -63,7 +63,7 @@ bool VulkanDevice::isSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
 QueueFamilies VulkanDevice::checkQueues(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	QueueFamilies families;
-	// Enumerate queueues
+	// Enumerate queues
 	uint32_t queueCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueCount, nullptr);
 

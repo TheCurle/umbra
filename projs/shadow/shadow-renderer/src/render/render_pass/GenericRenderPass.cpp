@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include "vlkx/vulkan/VulkanManager.h"
+#include <limits>
 
 namespace vlkx {
 

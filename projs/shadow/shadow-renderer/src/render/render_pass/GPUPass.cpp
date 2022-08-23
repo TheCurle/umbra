@@ -221,7 +221,7 @@ namespace vlkx {
                             0
                     };
 
-                    iter = deps.insert( { sourcePass, defaultDep} ).first;
+                    iter = deps.insert( { sourcePass, defaultDep } ).first;
                 }
 
                 addUsageToSubpass(prev, &iter->second.source);

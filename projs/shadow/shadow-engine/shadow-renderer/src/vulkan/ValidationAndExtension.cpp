@@ -41,7 +41,9 @@ std::vector<const char*> ValidationAndExtension::getRequiredExtensions(SDL_Windo
     SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr);
 
     std::vector<const char*> extensions = {
+            #ifdef __APPLE__
             "VK_KHR_portability_enumeration",
+            #endif
             "VK_KHR_get_physical_device_properties2"
     };
 
