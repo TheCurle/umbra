@@ -32,18 +32,9 @@ namespace vlkx {
         Buffer();
 
         virtual ~Buffer() {
-            vkFreeMemory(device->logical, memory, nullptr);
         }
 
     protected:
-        void setMemory(const VkDeviceMemory& device_mem) {
-            memory = device_mem;
-        }
-
-        const VkDeviceMemory& getMemory() const { return memory; }
-    private:
-        VkDeviceMemory memory;
-        VulkanDevice* device;
     };
 
     /*******************************************/

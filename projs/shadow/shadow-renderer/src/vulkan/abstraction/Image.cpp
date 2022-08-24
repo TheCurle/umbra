@@ -112,7 +112,6 @@ namespace vlkx {
     }
 
     Buffer::Buffer() {
-        device = VulkanManager::getInstance()->getDevice();
     }
 
     ImageDescriptor Image::loadSingleFromDisk(std::string path, bool flipY) {
@@ -205,6 +204,7 @@ namespace vlkx {
 
         VkTools::immediateExecute([&](const VkCommandBuffer& commands) {
             VkImageMemoryBarrier barrier {};
+            barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
             uint32_t destLevel = 1;
             VkExtent2D previousExt { extent.width, extent.height };
 
@@ -213,10 +213,13 @@ namespace vlkx {
                 const uint32_t sourceLevel = destLevel - 1;
 
                 barrier.subresourceRange.baseMipLevel = sourceLevel;
+                barrier.subresourceRange.levelCount = destLevel;
+                barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
                 barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
                 barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+                barrier.image = image;
                 waitForBarrier(commands, barrier, { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT });
 
                 const VkImageBlit blit {
@@ -306,9 +309,6 @@ namespace vlkx {
         if (mipmaps) usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
         setImage(VkTools::createImage(meta.format, usage, extent));
-        VmaAllocationInfo info;
-        vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);
-        setMemory(info.deviceMemory);
 
         transitionImage(getImage(), config, VK_IMAGE_ASPECT_COLOR_BIT, { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL },  { 0, VK_ACCESS_TRANSFER_WRITE_BIT }, { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT });
 
@@ -346,10 +346,6 @@ namespace vlkx {
 
     DepthStencilImage::DepthStencilBuffer::DepthStencilBuffer(const VkExtent2D &extent, VkFormat format) : ImageBuffer() {
         setImage(createImage(ImageConfig {}, 0, format, expandExtent(extent), VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
-
-        VmaAllocationInfo info;
-        vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);
-        setMemory(info.deviceMemory);
     }
 
     SwapchainImage::SwapchainImage(const VkImage &image, const VkExtent2D &extent, VkFormat format) : Image(extent, format), image(image) {
@@ -411,9 +407,6 @@ namespace vlkx {
 
         setImage(createImage(config, 0, format, expandExtent(extent), usageFlags));
 
-        VmaAllocationInfo info;
-        vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);
-        setMemory(info.deviceMemory);
     }
 
 }

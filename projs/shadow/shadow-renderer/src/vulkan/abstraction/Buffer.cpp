@@ -5,9 +5,9 @@
 
 namespace vlkx {
 
-    void executeBulkCopy(VkDeviceSize mapOffset, VkDeviceSize mapSize, const VkDeviceMemory& memory, const std::vector<vlkx::Buffer::CopyMeta>& meta) {
+    void executeBulkCopy(VkTools::ManagedBuffer buffer, const std::vector<vlkx::Buffer::CopyMeta>& meta) {
         void* dst;
-        vkMapMemory(VulkanManager::getInstance()->getDevice()->logical, memory, mapOffset, mapSize, 0, &dst);
+        vmaMapMemory(VulkanManager::getInstance()->getAllocator(), buffer.allocation, &dst);
         // GPU memory accessible through dst pointer
 
         for (const auto& info : meta) {
@@ -15,17 +15,13 @@ namespace vlkx {
         }
 
         // Unmap GPU memory
-        vkUnmapMemory(VulkanManager::getInstance()->getDevice()->logical, memory);
+        vmaUnmapMemory(VulkanManager::getInstance()->getAllocator(), buffer.allocation);
     }
 
     StagingBuffer::StagingBuffer(const vlkx::Buffer::BulkCopyMeta &copyMeta) : dataSize(copyMeta.length) {
         setBuffer(VkTools::createGPUBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VulkanManager::getInstance()->getDevice()->logical, VulkanManager::getInstance()->getDevice()->physical));
 
-        VmaAllocationInfo info;
-        vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);
-        setMemory(info.deviceMemory);
-
-        executeBulkCopy(0, dataSize, getMemory(), copyMeta.metas);
+        executeBulkCopy(get(), copyMeta.metas);
     }
 
     void StagingBuffer::copy(const VkBuffer &target) const {
@@ -64,9 +60,6 @@ namespace vlkx {
             usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
         setBuffer(VkTools::createGPUBuffer(totalSize, usage, props, VulkanManager::getInstance()->getDevice()->logical, VulkanManager::getInstance()->getDevice()->physical, dynamic));
-        VmaAllocationInfo info;
-        vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);
-        setMemory(info.deviceMemory);
     }
 
     DynamicBuffer::DynamicBuffer(size_t size, bool hasIndices, vlkx::VertexBuffer *buffer) : hasIndices(hasIndices), vertexBuffer(buffer) {
@@ -162,7 +155,7 @@ namespace vlkx {
     void DynamicPerVertexBuffer::copyToDevice(const vlkx::PerVertexBuffer::BufferDataMeta &meta) {
         const BulkCopyMeta copy = meta.prepareCopy(this);
         resize(copy.length);
-        executeBulkCopy(0, bufferSize(), getMemory(), copy.metas);
+        executeBulkCopy(get(), copy.metas);
     }
 
     void PerInstanceVertexBuffer::bind(const VkCommandBuffer &commands, uint32_t bindPoint, int offset) const {
@@ -184,7 +177,7 @@ namespace vlkx {
         const uint32_t totalSize = getSize() * instances;
         const BulkCopyMeta copy { totalSize, { { data, totalSize, 0 } } };
         resize(totalSize);
-        executeBulkCopy(0, bufferSize(), getMemory(), copy.metas);
+        executeBulkCopy(get(), copy.metas);
     }
 
     UniformBuffer::UniformBuffer(size_t chunkSize, int chunks) : DataBuffer(), chunkSize(chunkSize), numChunks(chunks) {
@@ -193,9 +186,6 @@ namespace vlkx {
 
         data = new char[chunkSize * numChunks];
         setBuffer(VkTools::createGPUBuffer(chunkLength * numChunks, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VulkanManager::getInstance()->getDevice()->logical, VulkanManager::getInstance()->getDevice()->physical, true));
-        VmaAllocationInfo info;
-        vmaGetAllocationInfo(VulkanManager::getInstance()->getAllocator(), get().allocation, &info);
-        setMemory(info.deviceMemory);
     }
 
     void UniformBuffer::upload(int index) const {
@@ -203,14 +193,17 @@ namespace vlkx {
         const VkDeviceSize srcOffset = chunkSize * index;
         const VkDeviceSize dstOffset = chunkLength * index;
 
-        executeBulkCopy(dstOffset, chunkSize, getMemory(), { { data + srcOffset, chunkSize, 0 } } );
+        // TODO: dstoffset?
+        executeBulkCopy(get(), { { data + srcOffset, chunkSize, 0 } } );
     }
 
     void UniformBuffer::upload(int index, VkDeviceSize dataSize, VkDeviceSize start) const {
         checkIndex(index);
         const VkDeviceSize srcOffset = chunkSize * index + start;
         const VkDeviceSize dstOffset = chunkLength * index + start;
-        executeBulkCopy(dstOffset, dataSize, getMemory(), { { data + srcOffset, dataSize, 0 } } );
+
+        // TODO: dstoffset?
+        executeBulkCopy(get(), { { data + srcOffset, dataSize, 0 } } );
     }
 
     VkDescriptorBufferInfo UniformBuffer::getDescriptorInfo(int index) const {

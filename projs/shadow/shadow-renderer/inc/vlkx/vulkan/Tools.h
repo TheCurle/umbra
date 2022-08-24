@@ -45,6 +45,7 @@ namespace VkTools {
         // Set up image metadata
         VkImageCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_3D;
         info.pNext = nullptr;
         info.format = format;
         info.extent = extent;
