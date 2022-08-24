@@ -202,44 +202,45 @@ namespace vlkx {
         if (!(props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
             throw std::runtime_error("Attempting to create Mipmaps for an image format that does not support blitting");
 
+        uint32_t destLevel = 1;
+        VkExtent2D previousExt { extent.width, extent.height };
+
         VkTools::immediateExecute([&](const VkCommandBuffer& commands) {
-            VkImageMemoryBarrier barrier {};
-            barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            uint32_t destLevel = 1;
-            VkExtent2D previousExt { extent.width, extent.height };
-
             // Blit the new images into place
-            for (const auto& ext : mipExtents) {
+            for (const auto &ext : mipExtents) {
                 const uint32_t sourceLevel = destLevel - 1;
+                VkImageMemoryBarrier barrier {
+                    VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    0, 0, image, { VK_IMAGE_ASPECT_COLOR_BIT, sourceLevel, 1, 0, 1 }
+                };
 
-                barrier.subresourceRange.baseMipLevel = sourceLevel;
-                barrier.subresourceRange.levelCount = destLevel;
-                barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-                barrier.image = image;
-                waitForBarrier(commands, barrier, { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT });
+                waitForBarrier(commands, barrier, {VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT});
 
                 const VkImageBlit blit {
-                        { VK_IMAGE_ASPECT_COLOR_BIT, sourceLevel, 0, 1 },
-                        { { 0, 0, 0 }, convertExtent(previousExt) },
-                        { VK_IMAGE_ASPECT_COLOR_BIT, destLevel, 0, 1 },
-                        { { 0, 0, 0 }, convertExtent(ext) }
+                        {VK_IMAGE_ASPECT_COLOR_BIT, sourceLevel, 0, 1},
+                        {{0, 0, 0},                 convertExtent(previousExt)},
+                        {VK_IMAGE_ASPECT_COLOR_BIT, destLevel,   0, 1},
+                        {{0, 0, 0},                 convertExtent(ext)}
                 };
-                vkCmdBlitImage(commands, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+                vkCmdBlitImage(commands, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
 
-                ++destLevel; previousExt = ext;
+                ++destLevel;
+                previousExt = ext;
             }
+        }, VulkanManager::getInstance()->getDevice());
 
+        VkTools::immediateExecute([&](const VkCommandBuffer& commands) {
             // Convert all images to shader read only so we can sample them
             for (uint32_t level = 0; level < mipExtents.size() + 1; ++level) {
-                barrier.subresourceRange.baseMipLevel = level;
-                barrier.oldLayout = level == mipExtents.size() ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+                VkImageMemoryBarrier barrier {
+                        VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                        nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                        level == mipExtents.size() ? VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        0, 0, image, { VK_IMAGE_ASPECT_COLOR_BIT, level, 1, 0, 1 }
+                };
 
                 waitForBarrier(commands, barrier, { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT });
             }
@@ -285,7 +286,7 @@ namespace vlkx {
     {}
 
     TextureImage::TextureBuffer::TextureBuffer(bool mipmaps, const vlkx::TextureImage::Meta &meta) : ImageBuffer() {
-        const VkExtent3D extent = meta.get3DExtent();
+        const VkExtent3D extent = expandExtent(meta.getExtent());
         const auto layers = meta.data.size();
         if (layers != 1 && layers != 6)
             throw std::runtime_error("Attempting to allocate a texture buffer for an invalid number of textures; only single textures and cubemap textures are supported.");
@@ -299,6 +300,8 @@ namespace vlkx {
             mipLevels = mipExtents.size() + 1;
         }
 
+        config.mipping = mipLevels;
+
         VkImageCreateFlags createFlags {};
         if (layers == 6)
             createFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -308,7 +311,7 @@ namespace vlkx {
         usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         if (mipmaps) usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-        setImage(VkTools::createImage(meta.format, usage, extent));
+        setImage(createImage(config, createFlags, meta.format, extent, usage));
 
         transitionImage(getImage(), config, VK_IMAGE_ASPECT_COLOR_BIT, { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL },  { 0, VK_ACCESS_TRANSFER_WRITE_BIT }, { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT });
 

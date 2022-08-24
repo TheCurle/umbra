@@ -10,8 +10,8 @@ public:
 	static double deltaTime;
 	static double deltaTime_ms;
 
-    static size_t timeSinceStart;
-    static size_t startTime;
+    static double timeSinceStart;
+    static double startTime;
 
 	static void UpdateTime();
 };

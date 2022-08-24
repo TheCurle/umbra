@@ -161,9 +161,8 @@ namespace ShadowEngine {
 
     void updateData(int frame) {
         const float elapsed_time = Time::timeSinceStart;
-        const auto window = VulkanManager::getInstance()->getWind();
         const glm::mat4 model = glm::rotate(glm::mat4{1.0f},
-                                            elapsed_time * glm::radians(90.0f),
+                                            elapsed_time * glm::radians(.09f),
                                             glm::vec3{1.0f, 1.0f, 0.0f});
         const glm::mat4 view = glm::lookAt(glm::vec3{3.0f}, glm::vec3{0.0f},
                                            glm::vec3{0.0f, 0.0f, 1.0f});
