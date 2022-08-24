@@ -62,6 +62,7 @@ public:
 	VulkanDevice* getDevice() { return device; }
 	SwapChain* getSwapchain() { return swapchain; }
 	VmaAllocator getAllocator() { return allocator; }
+    SDL_Window* getWind() { return wnd; }
 
     int getMaxFrames() { return MAX_FRAMES; }
 

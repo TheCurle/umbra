@@ -393,6 +393,8 @@ namespace vlkx {
         // Simplifies certain algorithms significantly if you know this beforehand
         bool isSingle() const { return numFrames == 1; }
 
+        uint32_t getSize() const { return sizePerFrame; }
+
         // Get the data in the buffer, casted to the given type
         template <typename DataType>
         DataType* getData(int frame) const {

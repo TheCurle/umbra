@@ -19,8 +19,6 @@ namespace vlkx {
 
         RendererConfig(int passCount, std::optional<int> firstTransparent = std::nullopt, std::optional<int> firstOverlay = std::nullopt);
 
-        explicit RendererConfig(int passCount) : RendererConfig(passCount, std::nullopt) {}
-
         // Get the number of passes that use the depth buffer.
         int depthPasses() const {
             return numOpaquePasses + numTransparentPasses;

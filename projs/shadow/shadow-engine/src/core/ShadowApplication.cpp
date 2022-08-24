@@ -14,25 +14,24 @@
 #include "vlkx/vulkan/abstraction/Commands.h"
 #include "vlkx/render/Geometry.h"
 #include "vlkx/render/shader/Pipeline.h"
+#include "temp/model/Builder.h"
 
 #define CATCH(x) \
     try { x } catch (std::exception& e) { spdlog::error(e.what()); exit(0); }
 
 namespace ShadowEngine {
 
-    struct AlphaVal {
-        alignas(sizeof(float)) float value;
+    struct Transform {
+        alignas(sizeof(glm::mat4)) glm::mat4 value;
     };
 
     std::unique_ptr<vlkx::ScreenRenderPassManager> passManager;
     std::unique_ptr<vlkx::RenderCommand> renderCommands;
 
-    std::unique_ptr<vlkx::PerVertexBuffer> vertexBuffer;
-    std::unique_ptr<vlkx::PushConstant> alphaPush;
+    std::unique_ptr<vlkx::PushConstant> transformation;
+    std::unique_ptr<vlkxtemp::Model> model;
 
-    std::unique_ptr<vlkx::GraphicsPipelineBuilder> builder;
-    std::unique_ptr<vlkx::Pipeline> pipeline;
-
+    float aspectRatio;
 
 	ShadowApplication* ShadowApplication::instance = nullptr;
 	
@@ -122,46 +121,37 @@ namespace ShadowEngine {
         init_info.Queue = vk->getDevice()->graphicsQueue;
         init_info.PipelineCache = VK_NULL_HANDLE;
         init_info.DescriptorPool = imGuiPool;
-        init_info.Subpass = 0;
+        init_info.Subpass = 1;
         init_info.MinImageCount = vk->getSwapchain()->images.size();
         init_info.ImageCount = vk->getSwapchain()->images.size();
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator = VK_NULL_HANDLE;
         init_info.CheckVkResultFn = nullptr;
 
-        const std::array<Geo::VertexColor, 3> vertices {
-                Geo::VertexColor { { 0.5,  -0.5, 0 },  { 1, 0, 0 } },
-                Geo::VertexColor { { 0,     0.5, 0 },  { 0, 0, 1 } },
-                Geo::VertexColor { { -0.5, -0.5, 0 },  { 0, 1, 0 } }
-        };
+        vlkxtemp::ModelBuilder::ShaderPool pool;
 
-        const vlkx::PerVertexBuffer::NoIndexBufferMeta meta {
-                { { vlkx::PerVertexBuffer::VertexDataMeta { vertices } } }
-        };
+        renderCommands = std::make_unique<vlkx::RenderCommand>(2);
+        transformation = std::make_unique<vlkx::PushConstant>(sizeof(Transform), 2);
 
-        vertexBuffer = std::make_unique<vlkx::StaticPerVertexBuffer>( meta, Geo::VertexColor::getAttributeDesc() );
+        using vlkxtemp::ModelBuilder;
 
-        alphaPush = std::make_unique<vlkx::PushConstant>(sizeof(AlphaVal), 2);
+        aspectRatio = (float) window_->Width / window_->Height;
 
-        builder = std::make_unique<vlkx::GraphicsPipelineBuilder>();
-        (*builder)
-            .name("Triangle Render")
-            .addVertex(0, Geo::VertexColor::getBindingDesc(), vertexBuffer->getAttrs(0))
-            .layout({}, { alphaPush->makeRange(VK_SHADER_STAGE_FRAGMENT_BIT) })
-            .colorBlend({ vlkx::Pipeline::getAlphaBlendState(true) })
-            .shader(VK_SHADER_STAGE_VERTEX_BIT, "resources/tri/tri.vert.spv")
-            .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/tri/tri.frag.spv");
+        model = ModelBuilder { "Walrus", 2, aspectRatio, ModelBuilder::SingleMeshModel {
+            "resources/walrus/walrus.obj", 1, {{ ModelBuilder::TextureType::Diffuse, { { "resources/walrus/texture.png" } } } }
+            }}
+            .bindTextures(ModelBuilder::TextureType::Diffuse, 1)
+            .pushStage(VK_SHADER_STAGE_VERTEX_BIT)
+            .pushConstant(transformation.get(), 0)
+            .shader(VK_SHADER_STAGE_VERTEX_BIT, "resources/walrus/cube.vert.spv")
+            .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/walrus/cube.frag.spv")
+            .build();
 
-        passManager = std::make_unique<vlkx::ScreenRenderPassManager>(vlkx::RendererConfig());
+        passManager = std::make_unique<vlkx::ScreenRenderPassManager>(vlkx::RendererConfig { 2 });
 
         passManager->initializeRenderPass();
 
-        (*builder)
-            .multiSample(VK_SAMPLE_COUNT_1_BIT)
-            .viewport( { { 0, 0, static_cast<float>(window_->Width), static_cast<float>(window_->Height), 0, 1 }, { { 0, 0 }, VulkanManager::getInstance()->getSwapchain()->extent } })
-            .renderPass(**passManager->getPass(), 0);
-
-        pipeline = builder->build();
+        model->update(true, VulkanManager::getInstance()->getSwapchain()->extent, VK_SAMPLE_COUNT_1_BIT, *passManager->getPass(), 0);
 
         ImGui_ImplVulkan_Init(&init_info, **passManager->getPass());
         // Upload Fonts
@@ -170,7 +160,17 @@ namespace ShadowEngine {
     }
 
     void updateData(int frame) {
-        alphaPush->getData<AlphaVal>(frame)->value = 1;// glm::abs(glm::sin(Time::timeSinceStart));
+        const float elapsed_time = Time::timeSinceStart;
+        const auto window = VulkanManager::getInstance()->getWind();
+        const glm::mat4 model = glm::rotate(glm::mat4{1.0f},
+                                            elapsed_time * glm::radians(90.0f),
+                                            glm::vec3{1.0f, 1.0f, 0.0f});
+        const glm::mat4 view = glm::lookAt(glm::vec3{3.0f}, glm::vec3{0.0f},
+                                           glm::vec3{0.0f, 0.0f, 1.0f});
+        const glm::mat4 proj = glm::perspective(
+                glm::radians(45.0f), aspectRatio,
+                0.1f, 100.0f);
+        *transformation->getData<Transform>(frame) = {proj * view * model};
     }
 
     void imGuiStartDraw() {
@@ -203,11 +203,12 @@ namespace ShadowEngine {
             const auto result = renderCommands->execute(renderCommands->getFrame(), VulkanManager::getInstance()->getSwapchain()->swapChain, update,
             [](const VkCommandBuffer& buffer, uint32_t frame) {
                 passManager->getPass()->execute(buffer, frame, {
+                        // Render our model
                         [&frame](const VkCommandBuffer& commands) {
-                            pipeline->bind(commands);
-                            alphaPush->upload(commands, pipeline->getLayout(), frame, 0, VK_SHADER_STAGE_FRAGMENT_BIT);
-                            vertexBuffer->draw(commands, 0, 0, 1);
-
+                            model->draw(commands, frame, 1);
+                        },
+                        // Render ImGUI
+                        [&frame](const VkCommandBuffer& commands) {
                             imGuiStartDraw();
 
                             bool showDemo = true;
