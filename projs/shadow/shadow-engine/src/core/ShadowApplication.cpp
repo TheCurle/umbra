@@ -21,15 +21,17 @@
 
 namespace ShadowEngine {
 
-    struct Transform {
+    struct SkyboxTransform {
         alignas(sizeof(glm::mat4)) glm::mat4 value;
     };
 
     std::unique_ptr<vlkx::ScreenRenderPassManager> passManager;
     std::unique_ptr<vlkx::RenderCommand> renderCommands;
 
-    std::unique_ptr<vlkx::PushConstant> transformation;
-    std::unique_ptr<vlkxtemp::Model> model;
+    std::unique_ptr<vlkx::PushConstant> skyboxConstant;
+    std::unique_ptr<vlkxtemp::Model> skyboxModel;
+    std::unique_ptr<vlkxtemp::Model> planetModel;
+    std::unique_ptr<vlkxtemp::Model> asteroidModel;
 
     float aspectRatio;
 
@@ -131,27 +133,38 @@ namespace ShadowEngine {
         vlkxtemp::ModelBuilder::ShaderPool pool;
 
         renderCommands = std::make_unique<vlkx::RenderCommand>(2);
-        transformation = std::make_unique<vlkx::PushConstant>(sizeof(Transform), 2);
+        skyboxConstant = std::make_unique<vlkx::PushConstant>(sizeof(SkyboxTransform), 2);
 
         using vlkxtemp::ModelBuilder;
 
         aspectRatio = (float) window_->Width / window_->Height;
 
-        model = ModelBuilder { "Walrus", 2, aspectRatio, ModelBuilder::SingleMeshModel {
-            "resources/walrus/walrus.obj", 1, {{ ModelBuilder::TextureType::Diffuse, { { "resources/walrus/texture.png" } } } }
+        const vlkx::RefCountedTexture::CubemapLocation skybox {
+                "resources/planets/bg",
+                {
+                        "left.png", "right.png",
+                        "top.png", "bottom.png",
+                        "front.png", "back.png"
+                }
+        };
+
+        skyboxModel = ModelBuilder {
+            "Skybox", 2, aspectRatio,
+            ModelBuilder::SingleMeshModel { "resources/planets/skybox.obj", 1,
+                { { ModelBuilder::TextureType::Cubemap, { { skybox } } } }
             }}
-            .bindTextures(ModelBuilder::TextureType::Diffuse, 1)
+            .bindTextures(ModelBuilder::TextureType::Cubemap, 1)
             .pushStage(VK_SHADER_STAGE_VERTEX_BIT)
-            .pushConstant(transformation.get(), 0)
-            .shader(VK_SHADER_STAGE_VERTEX_BIT, "resources/walrus/cube.vert.spv")
-            .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/walrus/cube.frag.spv")
+            .pushConstant(skyboxConstant.get(), 0)
+            .shader(VK_SHADER_STAGE_VERTEX_BIT, "resources/planets/skybox.vert.spv")
+            .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/planets/skybox.frag.spv")
             .build();
 
         passManager = std::make_unique<vlkx::ScreenRenderPassManager>(vlkx::RendererConfig { 2 });
 
         passManager->initializeRenderPass();
 
-        model->update(true, VulkanManager::getInstance()->getSwapchain()->extent, VK_SAMPLE_COUNT_1_BIT, *passManager->getPass(), 0);
+        skyboxModel->update(true, VulkanManager::getInstance()->getSwapchain()->extent, VK_SAMPLE_COUNT_1_BIT, *passManager->getPass(), 0);
 
         ImGui_ImplVulkan_Init(&init_info, **passManager->getPass());
         // Upload Fonts
@@ -161,15 +174,10 @@ namespace ShadowEngine {
 
     void updateData(int frame) {
         const float elapsed_time = Time::timeSinceStart;
-        const glm::mat4 model = glm::rotate(glm::mat4{1.0f},
-                                            elapsed_time * glm::radians(.09f),
-                                            glm::vec3{1.0f, 1.0f, 0.0f});
-        const glm::mat4 view = glm::lookAt(glm::vec3{3.0f}, glm::vec3{0.0f},
-                                           glm::vec3{0.0f, 0.0f, 1.0f});
         const glm::mat4 proj = glm::perspective(
                 glm::radians(45.0f), aspectRatio,
                 0.1f, 100.0f);
-        *transformation->getData<Transform>(frame) = {proj * view * model};
+        *skyboxConstant->getData<SkyboxTransform>(frame) = { proj };
     }
 
     void imGuiStartDraw() {
@@ -204,7 +212,7 @@ namespace ShadowEngine {
                 passManager->getPass()->execute(buffer, frame, {
                         // Render our model
                         [&frame](const VkCommandBuffer& commands) {
-                            model->draw(commands, frame, 1);
+                            skyboxModel->draw(commands, frame, 1);
                         },
                         // Render ImGUI
                         [&frame](const VkCommandBuffer& commands) {

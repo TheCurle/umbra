@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <functional>
+#include <string>
 
 #include <vulkan/vulkan.h>
 #include <vlkx/vulkan/VulkanDevice.h>
@@ -25,8 +26,7 @@ namespace VkTools {
 
     VkSampler createSampler(VkFilter filters, VkSamplerAddressMode mode, uint32_t mipping);
 
-    VkImageView
-    createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers,
+    VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers,
                     VkDevice device);
 
     ManagedBuffer createGPUBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,

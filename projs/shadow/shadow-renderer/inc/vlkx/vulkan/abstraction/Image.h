@@ -104,7 +104,7 @@ namespace vlkx {
         static ImageDescriptor loadSingleFromDisk(std::string path, bool flipY);
         // The following are left unimplemented intentionally.
         //static ImageDescriptor loadSingleFromVFS(std::string path, bool flipY);
-        //static ImageDescriptor loadCubeFromDisk(std::string directory, const std::array<std::string, 6>& files, bool flipY);
+        static ImageDescriptor loadCubeFromDisk(const std::string& directory, const std::array<std::string, 6>& files, bool flipY);
         //static ImageDescriptor loadCubeFromVFS(std::string directory, const std::array<std::string, 6>& files, bool flipY);
 
         virtual ImageUsage getUsage() const { return ImageUsage {}; }

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <utility>
 
 #include <stb_image.h>
 #include "vlkx/vulkan/VulkanManager.h"
@@ -31,7 +32,7 @@ namespace vlkx {
         const char* data;
     };
 
-    ImageData loadImage(std::string path, int wantedChannels) {
+    ImageData loadImage(const std::string& path, int wantedChannels) {
         shadowutil::FileData* data = shadowutil::loadFile(path);
         int width, height, channels;
 
@@ -114,9 +115,28 @@ namespace vlkx {
     Buffer::Buffer() {
     }
 
+    ImageDescriptor Image::loadCubeFromDisk(const std::string& directory, const std::array<std::string, 6> &files,
+                                            bool flipY) {
+        stbi_set_flip_vertically_on_load(flipY);
+        auto firstImage = loadImage(directory + "/" + files[0], STBI_default);
+        const ImageDescriptor::Dimension& dim = firstImage.dimensions;
+        char* data = new char[dim.getSize() * 6]; // TODO: Figure out how to make this delete
+        memcpy(data, firstImage.data, dim.getSize());
+        for (size_t i = 1; i < 6; i++) {
+            auto image = loadImage(directory + "/" + files[1], STBI_default);
+            if (!(image.dimensions.width == dim.width && image.dimensions.height == dim.height && image.dimensions.channels == dim.channels))
+                throw std::runtime_error("Image " + std::to_string(i) + "(" + directory + "/" + files[i] + ") has different dimensions from the first image.");
+
+            memcpy(data + i * dim.getSize(), image.data, dim.getSize());
+        }
+
+        stbi_set_flip_vertically_on_load(false);
+        return { ImageDescriptor::Type::Cubemap, firstImage.dimensions, data };
+    }
+
     ImageDescriptor Image::loadSingleFromDisk(std::string path, bool flipY) {
         stbi_set_flip_vertically_on_load(flipY);
-        auto image = loadImage(path, STBI_default);
+        auto image = loadImage(std::move(path), STBI_default);
         stbi_set_flip_vertically_on_load(false);
 
         return { ImageDescriptor::Type::Single, image.dimensions, image.data };
@@ -334,11 +354,11 @@ namespace vlkx {
             mips = true;
             ident = singleTex;
             image = std::make_unique<ImageDescriptor>(Image::loadSingleFromDisk(*singleTex, false));
-        } /*else if (const auto* cubeTex = std::get_if<CubemapLocation>(&location); cubeTex != nullptr) {
+        } else if (const auto* cubeTex = std::get_if<CubemapLocation>(&location); cubeTex != nullptr) {
             mips = false;
             ident = &cubeTex->directory;
             image = std::make_unique<ImageDescriptor>(Image::loadCubeFromDisk(cubeTex->directory, cubeTex->files, false));
-        }*/
+        }
 
         return ReferenceCounter::get(*ident, mips, config, createTextureMeta(*image, usages));
     }
