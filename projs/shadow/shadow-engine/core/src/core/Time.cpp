@@ -3,6 +3,7 @@
 
 int Time::NOW = 0;//SDL_GetPerformanceCounter();
 int Time::LAST = 0;
+double lastFrame = 0;
 double Time::deltaTime_ms = 0;
 double Time::deltaTime = 0;
 double Time::startTime = 0;
@@ -17,7 +18,10 @@ void Time::UpdateTime()
     auto value = now_ms.time_since_epoch();
     double duration = value.count();
 
+    deltaTime = duration - lastFrame;
     if (startTime == 0)
         startTime = duration;
     timeSinceStart = duration - startTime;
+
+    lastFrame = duration;
 }

@@ -28,6 +28,8 @@ namespace ShadowEngine {
     std::unique_ptr<vlkx::ScreenRenderPassManager> passManager;
     std::unique_ptr<vlkx::RenderCommand> renderCommands;
 
+    std::unique_ptr<vlkx::UserPerspectiveCamera> camera;
+
     std::unique_ptr<vlkx::PushConstant> skyboxConstant;
     std::unique_ptr<vlkxtemp::Model> skyboxModel;
     std::unique_ptr<vlkxtemp::Model> planetModel;
@@ -135,6 +137,11 @@ namespace ShadowEngine {
         renderCommands = std::make_unique<vlkx::RenderCommand>(2);
         skyboxConstant = std::make_unique<vlkx::PushConstant>(sizeof(SkyboxTransform), 2);
 
+        vlkx::Camera::Config conf {};
+        conf.pos = glm::vec3(0, 0, 0);
+        conf.target = glm::vec3(1, 0, 0);
+        camera = vlkx::UserPerspectiveCamera::create( {}, conf, { 45, aspectRatio });
+
         using vlkxtemp::ModelBuilder;
 
         aspectRatio = (float) window_->Width / window_->Height;
@@ -170,14 +177,13 @@ namespace ShadowEngine {
         // Upload Fonts
         VkTools::immediateExecute([](const VkCommandBuffer& commands) { ImGui_ImplVulkan_CreateFontsTexture(commands); }, VulkanManager::getInstance()->getDevice());
 
+        SDL_SetRelativeMouseMode(SDL_TRUE);
     }
 
     void updateData(int frame) {
         const float elapsed_time = Time::timeSinceStart;
-        const glm::mat4 proj = glm::perspective(
-                glm::radians(45.0f), aspectRatio,
-                0.1f, 100.0f);
-        *skyboxConstant->getData<SkyboxTransform>(frame) = { proj };
+        const vlkx::Camera& cam = camera->getCamera();
+        *skyboxConstant->getData<SkyboxTransform>(frame) = { cam.getProjMatrix() * cam.getSkyboxView() };
     }
 
     void imGuiStartDraw() {
@@ -194,8 +200,25 @@ namespace ShadowEngine {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {  // poll until all events are handled!
             ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT)
-                running = false;
+
+            switch(event.type) {
+                case SDL_KEYDOWN:
+                    switch (event.key.keysym.sym) {
+                        case SDLK_w:
+                            camera->press(vlkx::Camera::Input::Up, Time::deltaTime); break;
+                        case SDLK_s:
+                            camera->press(vlkx::Camera::Input::Down, Time::deltaTime); break;
+                        case SDLK_a:
+                            camera->press(vlkx::Camera::Input::Left, Time::deltaTime); break;
+                        case SDLK_d:
+                            camera->press(vlkx::Camera::Input::Right, Time::deltaTime); break;
+                    } break;
+                case SDL_MOUSEMOTION:
+                    camera->move(event.motion.xrel, event.motion.yrel); break;
+                case SDL_QUIT:
+                    running = false; break;
+
+            }
         }
     }
 
