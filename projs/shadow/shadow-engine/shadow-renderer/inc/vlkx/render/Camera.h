@@ -27,8 +27,8 @@ namespace vlkx {
             float nearPlane = 0.1;                     // The nearest a vertex can be to the camera before being clipped
             float farPlane = 100;                      // The furthest a vertex can be from the camera before clipped
             glm::vec3 upV{0, 1, 0};        // The vector pointing straight up from the camera
-            glm::vec3 pos{0, 0, 1};        // The position of the camera in the world
-            glm::vec3 target{0, 0, 0};     // The point the camera is looking at
+            glm::vec3 pos{0, 0, 0};        // The position of the camera in the world
+            glm::vec3 target{1, 0, 0};     // The point the camera is looking at
         };
 
         Camera(const Camera &) = delete;

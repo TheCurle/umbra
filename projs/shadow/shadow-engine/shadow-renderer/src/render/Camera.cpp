@@ -63,9 +63,8 @@ template <typename Type>
 void UserCamera<Type>::move(double x, double y) {
     if (!isActive) return;
 
-    const auto offsetX = static_cast<float>((x - cursorPos.x) * config.turnSpeed);
-    const auto offsetY = static_cast<float>((y - cursorPos.y) * config.turnSpeed);
-    cursorPos = { x, y };
+    const auto offsetX = static_cast<float>(x * config.turnSpeed);
+    const auto offsetY = static_cast<float>(y * config.turnSpeed);
 
     pitch = glm::clamp(pitch - offsetY, glm::radians(-89.9f), glm::radians(89.9f));
     yaw = glm::mod(yaw - offsetX, glm::radians(360.0f));

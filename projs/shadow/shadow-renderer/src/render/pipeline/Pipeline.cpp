@@ -87,7 +87,7 @@ namespace vlkx {
             pushSizes[i] = pushConstants[i].size;
 
         const auto totalSize = std::accumulate(pushSizes.begin(), pushSizes.end(), 0);
-        if (totalSize >= 128)
+        if (totalSize > 128)
             throw std::runtime_error("Trying to set push constants of total size " + std::to_string(totalSize) + " into pipeline " + name);
 
         descLayouts = std::move(descs);

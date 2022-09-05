@@ -25,12 +25,23 @@ namespace ShadowEngine {
         alignas(sizeof(glm::mat4)) glm::mat4 value;
     };
 
+    struct PlanetTransform {
+        alignas(sizeof(glm::mat4)) glm::mat4 model;
+        alignas(sizeof(glm::mat4)) glm::mat4 projection;
+    };
+
+    struct Light {
+        alignas(sizeof(glm::vec4)) glm::vec4 dirTime;
+    };
+
     std::unique_ptr<vlkx::ScreenRenderPassManager> passManager;
     std::unique_ptr<vlkx::RenderCommand> renderCommands;
 
     std::unique_ptr<vlkx::UserPerspectiveCamera> camera;
+    std::unique_ptr<vlkx::UniformBuffer> light;
 
     std::unique_ptr<vlkx::PushConstant> skyboxConstant;
+    std::unique_ptr<vlkx::PushConstant> planetConstant;
     std::unique_ptr<vlkxtemp::Model> skyboxModel;
     std::unique_ptr<vlkxtemp::Model> planetModel;
     std::unique_ptr<vlkxtemp::Model> asteroidModel;
@@ -136,15 +147,16 @@ namespace ShadowEngine {
 
         renderCommands = std::make_unique<vlkx::RenderCommand>(2);
         skyboxConstant = std::make_unique<vlkx::PushConstant>(sizeof(SkyboxTransform), 2);
+        planetConstant = std::make_unique<vlkx::PushConstant>(sizeof(PlanetTransform), 2);
+        light = std::make_unique<vlkx::UniformBuffer>(sizeof(Light), 2);
+
+        aspectRatio = (float) window_->Width / window_->Height;
 
         vlkx::Camera::Config conf {};
-        conf.pos = glm::vec3(0, 0, 0);
-        conf.target = glm::vec3(1, 0, 0);
-        camera = vlkx::UserPerspectiveCamera::create( {}, conf, { 45, aspectRatio });
+        camera = vlkx::UserPerspectiveCamera::create( {}, {}, { 45, aspectRatio });
 
         using vlkxtemp::ModelBuilder;
 
-        aspectRatio = (float) window_->Width / window_->Height;
 
         const vlkx::RefCountedTexture::CubemapLocation skybox {
                 "resources/planets/bg",
@@ -167,11 +179,30 @@ namespace ShadowEngine {
             .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/planets/skybox.frag.spv")
             .build();
 
+        planetModel = ModelBuilder {
+            "Walrus", 2, aspectRatio,
+            ModelBuilder::SingleMeshModel {"resources/walrus/walrus.obj", 1,
+                {{ ModelBuilder::TextureType::Diffuse, { { "resources/walrus/texture.png" } } } }
+            }}
+            .bindTextures(ModelBuilder::TextureType::Diffuse, 2)
+            .uniform(VK_SHADER_STAGE_FRAGMENT_BIT, {{1, 1}})
+            .uniformBuffer(1, *light)
+            .pushStage(VK_SHADER_STAGE_VERTEX_BIT)
+            .pushConstant(planetConstant.get(), 0)
+            .shader(VK_SHADER_STAGE_VERTEX_BIT, "resources/walrus/walrus.vert.spv")
+            .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/walrus/walrus.frag.spv")
+            .build();
+
         passManager = std::make_unique<vlkx::ScreenRenderPassManager>(vlkx::RendererConfig { 2 });
 
         passManager->initializeRenderPass();
 
         skyboxModel->update(true, VulkanManager::getInstance()->getSwapchain()->extent, VK_SAMPLE_COUNT_1_BIT, *passManager->getPass(), 0);
+        int cursorX, cursorY;
+        SDL_GetMouseState(&cursorX, &cursorY);
+        camera->setPos({ cursorX, cursorY });
+
+        planetModel->update(true, VulkanManager::getInstance()->getSwapchain()->extent, VK_SAMPLE_COUNT_1_BIT, *passManager->getPass(), 0);
 
         ImGui_ImplVulkan_Init(&init_info, **passManager->getPass());
         // Upload Fonts
@@ -182,7 +213,19 @@ namespace ShadowEngine {
 
     void updateData(int frame) {
         const float elapsed_time = Time::timeSinceStart;
+
+        const glm::vec3 lightDir{glm::sin(elapsed_time * 0.6f), -0.3f,
+                                  glm::cos(elapsed_time * 0.6f)};
+        *light->getData<Light>(frame) =
+                {glm::vec4{lightDir, elapsed_time}};
+        light->upload(frame);
+
+        glm::mat4 modelMatrix { 1 };
+        modelMatrix = glm::rotate(modelMatrix, elapsed_time * glm::radians(5.0f), glm::vec3 { 0, 1, 0 });
         const vlkx::Camera& cam = camera->getCamera();
+
+        glm::mat4 planetProjection = cam.getProjMatrix() * cam.getViewMatrix();
+        *planetConstant->getData<PlanetTransform>(frame) = { modelMatrix, planetProjection };
         *skyboxConstant->getData<SkyboxTransform>(frame) = { cam.getProjMatrix() * cam.getSkyboxView() };
     }
 
@@ -214,10 +257,9 @@ namespace ShadowEngine {
                             camera->press(vlkx::Camera::Input::Right, Time::deltaTime); break;
                     } break;
                 case SDL_MOUSEMOTION:
-                    camera->move(event.motion.xrel, event.motion.yrel); break;
+                    camera->move(-event.motion.xrel, -event.motion.yrel); break;
                 case SDL_QUIT:
                     running = false; break;
-
             }
         }
     }
@@ -235,6 +277,7 @@ namespace ShadowEngine {
                 passManager->getPass()->execute(buffer, frame, {
                         // Render our model
                         [&frame](const VkCommandBuffer& commands) {
+                            planetModel->draw(commands, frame, 1);
                             skyboxModel->draw(commands, frame, 1);
                         },
                         // Render ImGUI
@@ -256,6 +299,8 @@ namespace ShadowEngine {
             renderCommands->nextFrame();
 
             Time::UpdateTime();
+
+            camera->active(true);
 		}
 
         ImGui_ImplVulkan_Shutdown();
