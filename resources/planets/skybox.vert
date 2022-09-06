@@ -11,6 +11,7 @@ layout(location = 2) in vec2 in_uv;
 layout(location = 0) out vec3 texCoord;
 
 void main() {
+
     gl_Position = transf.matrix * vec4(in_pos, 1.0);
     gl_Position.zw = vec2(1.0);
     texCoord = in_pos;

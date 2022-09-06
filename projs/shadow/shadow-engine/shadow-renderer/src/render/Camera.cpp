@@ -39,7 +39,9 @@ PerspectiveCamera::RT PerspectiveCamera::getRT() const {
 }
 
 glm::mat4 PerspectiveCamera::getProjMatrix() const {
-    return glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
+    glm::mat4 proj = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
+    proj[1][1] = -proj[1][1];
+    return proj;
 }
 
 OrthographicCamera &OrthographicCamera::setWidth(float vWidth) {
@@ -68,9 +70,7 @@ void UserCamera<Type>::move(double x, double y) {
 
     pitch = glm::clamp(pitch - offsetY, glm::radians(-89.9f), glm::radians(89.9f));
     yaw = glm::mod(yaw - offsetX, glm::radians(360.0f));
-    camera->forward( { glm::cos(pitch) * glm::sin(yaw) * refLeft +
-                       glm::cos(pitch) * glm::cos(yaw) * refForward +
-                       glm::sin(pitch) * camera->getUp()} );
+    camera->forward( { glm::cos(pitch) * glm::cos(yaw), glm::sin(pitch), glm::cos(pitch) * glm::sin(yaw) });
 }
 
 template <typename Type>

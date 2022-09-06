@@ -170,9 +170,10 @@ namespace vlkx {
             reset();
         }
 
+        void reset();
+
     private:
 
-        void reset();
 
         const Camera::Movement config;
         bool isActive = false;

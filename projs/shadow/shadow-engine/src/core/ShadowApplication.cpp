@@ -2,7 +2,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "Time.h"
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -13,7 +13,6 @@
 #include "spdlog/spdlog.h"
 #include "vlkx/vulkan/abstraction/Commands.h"
 #include "vlkx/render/Geometry.h"
-#include "vlkx/render/shader/Pipeline.h"
 #include "temp/model/Builder.h"
 
 #define CATCH(x) \
@@ -88,7 +87,7 @@ namespace ShadowEngine {
             //return 1;
         }
 
-        window_ = new ShadowWindow(800,450);
+        window_ = new ShadowWindow(800,800);
 
         CATCH(VulkanManager::getInstance()->initVulkan(window_->sdlWindowPtr);)
 
@@ -153,7 +152,7 @@ namespace ShadowEngine {
         aspectRatio = (float) window_->Width / window_->Height;
 
         vlkx::Camera::Config conf {};
-        camera = vlkx::UserPerspectiveCamera::create( {}, {}, { 45, aspectRatio });
+        camera = vlkx::UserPerspectiveCamera::create( {}, {}, { 110, aspectRatio });
 
         using vlkxtemp::ModelBuilder;
 
@@ -211,22 +210,40 @@ namespace ShadowEngine {
         SDL_SetRelativeMouseMode(SDL_TRUE);
     }
 
+    void printMatrix(glm::mat4 mat) {
+        for (size_t i = 0; i < 4; i++) {
+            for (size_t j = 0; j < 4; j++) {
+                std::cout << mat[i][j] << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl << std::endl;
+    }
+
     void updateData(int frame) {
         const float elapsed_time = Time::timeSinceStart;
 
-        const glm::vec3 lightDir{glm::sin(elapsed_time * 0.6f), -0.3f,
-                                  glm::cos(elapsed_time * 0.6f)};
+        const glm::vec3 lightDir{glm::sin(elapsed_time * 0.0006f), -0.3f,
+                                  glm::cos(elapsed_time * 0.0006f)};
         *light->getData<Light>(frame) =
                 {glm::vec4{lightDir, elapsed_time}};
         light->upload(frame);
 
         glm::mat4 modelMatrix { 1 };
-        modelMatrix = glm::rotate(modelMatrix, elapsed_time * glm::radians(5.0f), glm::vec3 { 0, 1, 0 });
+        modelMatrix = glm::rotate(modelMatrix, elapsed_time * glm::radians(0.0005f), glm::vec3 { 0, 1, 0 });
         const vlkx::Camera& cam = camera->getCamera();
+
+        const glm::mat4 view = glm::lookAt(glm::vec3{3.0f}, glm::vec3{0.0f},
+                                           glm::vec3{0.0f, 1.0f, 0.0f});
+        const glm::mat4 proj = glm::perspective(
+                glm::radians(45.0f), aspectRatio,
+                0.1f, 100.0f);
 
         glm::mat4 planetProjection = cam.getProjMatrix() * cam.getViewMatrix();
         *planetConstant->getData<PlanetTransform>(frame) = { modelMatrix, planetProjection };
-        *skyboxConstant->getData<SkyboxTransform>(frame) = { cam.getProjMatrix() * cam.getSkyboxView() };
+        glm::mat4 skyboxMat = cam.getProjMatrix() * cam.getSkyboxView();
+        skyboxConstant->getData<SkyboxTransform>(frame)->value = skyboxMat;
     }
 
     void imGuiStartDraw() {
@@ -239,6 +256,16 @@ namespace ShadowEngine {
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commands);
     }
 
+    void showDebugWindow(std::unique_ptr<vlkx::UserPerspectiveCamera>* cam) {
+        #define camPos cam->get()->getCamera().getPosition()
+        #define camFwd cam->get()->getCamera().getForward()
+        ImGui::Begin("Camera Debug");
+        ImGui::Text("Camera position: (x %f, y %f, z %f)", camPos.x, camPos.y, camPos.z );
+        ImGui::Text("Camera target: (x %f, y %f, z %f)", camPos.x + camFwd.x, camPos.y + camFwd.y, camPos.z + camFwd.z);
+        ImGui::Text("Camera FOV: %f", cam->get()->getCamera().getFieldOfView());
+        ImGui::End();
+    }
+
     void ShadowApplication::PollEvents() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {  // poll until all events are handled!
@@ -247,6 +274,8 @@ namespace ShadowEngine {
             switch(event.type) {
                 case SDL_KEYDOWN:
                     switch (event.key.keysym.sym) {
+                        case SDLK_ESCAPE:
+                            camera->reset(); break;
                         case SDLK_w:
                             camera->press(vlkx::Camera::Input::Up, Time::deltaTime); break;
                         case SDLK_s:
@@ -258,6 +287,9 @@ namespace ShadowEngine {
                     } break;
                 case SDL_MOUSEMOTION:
                     camera->move(-event.motion.xrel, -event.motion.yrel); break;
+
+                case SDL_MOUSEWHEEL:
+                    camera->scroll(event.wheel.y, 1, 170); break;
                 case SDL_QUIT:
                     running = false; break;
             }
@@ -281,12 +313,14 @@ namespace ShadowEngine {
                             skyboxModel->draw(commands, frame, 1);
                         },
                         // Render ImGUI
-                        [&frame](const VkCommandBuffer& commands) {
+                        [&](const VkCommandBuffer& commands) {
                             imGuiStartDraw();
 
                             bool showDemo = true;
-                            if (showDemo)
-                                ImGui::ShowDemoWindow(&showDemo);
+                            //if (showDemo)
+                            //    ImGui::ShowDemoWindow(&showDemo);
+
+                            showDebugWindow(&camera);
 
                             imGuiEndDraw(commands);
                         }
@@ -302,6 +336,8 @@ namespace ShadowEngine {
 
             camera->active(true);
 		}
+
+        vkDeviceWaitIdle(VulkanManager::getInstance()->getDevice()->logical);
 
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL2_Shutdown();
