@@ -18,17 +18,16 @@ ShadowEngine::ModuleManager::ModuleManager()
 }
 
 ShadowEngine::ModuleManager::~ModuleManager()
-{
-}
+= default;
 
-void ShadowEngine::ModuleManager::PushModule(std::shared_ptr<Module> module, const std::string domain)
+void ShadowEngine::ModuleManager::PushModule(const std::shared_ptr<Module>& module, const std::string& domain)
 {
     ModuleRef r = {module, domain};
     modules.emplace_back(r);
     module->PreInit();
 }
 
-ShadowEngine::Module& ShadowEngine::ModuleManager::GetModule(std::string name)
+ShadowEngine::Module& ShadowEngine::ModuleManager::GetModule(const std::string& name)
 {
     for (auto& module : modules)
     {

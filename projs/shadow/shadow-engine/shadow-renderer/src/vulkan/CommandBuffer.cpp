@@ -1,5 +1,5 @@
 #include <vlkx/vulkan/CommandBuffer.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 
 CommandBuffer::CommandBuffer() {}
 CommandBuffer::~CommandBuffer() {}
@@ -11,7 +11,7 @@ void CommandBuffer::createCommandPoolAndBuffers(size_t size) {
 
 void CommandBuffer::createCommandPool() {
 	// Prepare queues
-	QueueFamilies families = VulkanManager::getInstance()->getDevice()->getQueues();
+	QueueFamilies families = VulkanModule::getInstance()->getDevice()->getQueues();
 
 	// Prepare command pool creation data
 	VkCommandPoolCreateInfo info = {};
@@ -20,7 +20,7 @@ void CommandBuffer::createCommandPool() {
 	info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	// Attempt creation
-	if (vkCreateCommandPool(VulkanManager::getInstance()->getDevice()->logical, &info, nullptr, &commands) != VK_SUCCESS)
+	if (vkCreateCommandPool(VulkanModule::getInstance()->getDevice()->logical, &info, nullptr, &commands) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create a command pool.");
 }
 
@@ -34,7 +34,7 @@ void CommandBuffer::allocateCommandBuffers(size_t size) {
 	info.commandBufferCount = (uint32_t)buffers.size();
 
 	// Attempt allocation
-	if (vkAllocateCommandBuffers(VulkanManager::getInstance()->getDevice()->logical, &info, buffers.data()) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(VulkanModule::getInstance()->getDevice()->logical, &info, buffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Unable to allocate command buffer");
 }
 
@@ -56,5 +56,5 @@ void CommandBuffer::endCommandBuffer(VkCommandBuffer buffer) {
 }
 
 void CommandBuffer::destroy() {
-	vkDestroyCommandPool(VulkanManager::getInstance()->getDevice()->logical, commands, nullptr);
+	vkDestroyCommandPool(VulkanModule::getInstance()->getDevice()->logical, commands, nullptr);
 }

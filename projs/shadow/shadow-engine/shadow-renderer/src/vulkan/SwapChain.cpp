@@ -1,5 +1,5 @@
 #include <vlkx/vulkan/SwapChain.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 #include "spdlog/spdlog.h"
 
 SwapChain::SwapChain() {}
@@ -45,7 +45,7 @@ VkExtent2D SwapChain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 }
 
 void SwapChain::create(VkSurfaceKHR surface) {
-	SwapChainMeta info = VulkanManager::getInstance()->getDevice()->swapChain;
+	SwapChainMeta info = VulkanModule::getInstance()->getDevice()->swapChain;
 
 	VkSurfaceFormatKHR chosenFormat = chooseFormat(info.formats);
 	VkPresentModeKHR chosenMode = chooseMode(info.modes);
@@ -66,7 +66,7 @@ void SwapChain::create(VkSurfaceKHR surface) {
 	createInfo.imageArrayLayers = 1; // 2 for VR
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	QueueFamilies queues = VulkanManager::getInstance()->getDevice()->getQueues();
+	QueueFamilies queues = VulkanModule::getInstance()->getDevice()->getQueues();
 	uint32_t indices[] = { static_cast<uint32_t>(queues.graphics), static_cast<uint32_t>(queues.presentation) };
 
 	if (queues.graphics != queues.presentation) {
@@ -86,13 +86,13 @@ void SwapChain::create(VkSurfaceKHR surface) {
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
 	// Create the swap-chain
-	if (vkCreateSwapchainKHR(VulkanManager::getInstance()->getDevice()->logical, &createInfo, nullptr, &swapChain))
+	if (vkCreateSwapchainKHR(VulkanModule::getInstance()->getDevice()->logical, &createInfo, nullptr, &swapChain))
 		throw std::runtime_error("Failed to create swap-chain");
 
 	// Fetch our images from the swapchain
-	vkGetSwapchainImagesKHR(VulkanManager::getInstance()->getDevice()->logical, swapChain, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, &imageCount, nullptr);
 	images.resize(imageCount);
-	vkGetSwapchainImagesKHR(VulkanManager::getInstance()->getDevice()->logical, swapChain, &imageCount, images.data());
+	vkGetSwapchainImagesKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, &imageCount, images.data());
 
 	// Set gloabls
 	format = chosenFormat.format;
@@ -100,5 +100,5 @@ void SwapChain::create(VkSurfaceKHR surface) {
 }
 
 void SwapChain::destroy() {
-	vkDestroySwapchainKHR(VulkanManager::getInstance()->getDevice()->logical, swapChain, nullptr);
+	vkDestroySwapchainKHR(VulkanModule::getInstance()->getDevice()->logical, swapChain, nullptr);
 }

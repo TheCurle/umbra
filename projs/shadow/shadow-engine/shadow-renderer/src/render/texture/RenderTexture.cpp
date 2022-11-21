@@ -1,5 +1,5 @@
 #include <vlkx/render/texture/RenderTexture.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 #include <vlkx/vulkan/Tools.h>
 
 SingleRenderTexture::SingleRenderTexture() {}
@@ -20,7 +20,7 @@ void SingleRenderTexture::createViews(VkFormat format) {
 
 	// Iterate images and create views for each.
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		swapChainImageViews[i] = VkTools::createImageView(swapChainImages[i], format, VK_IMAGE_ASPECT_COLOR_BIT, VulkanManager::getInstance()->getDevice()->logical);
+		swapChainImageViews[i] = VkTools::createImageView(swapChainImages[i], format, VK_IMAGE_ASPECT_COLOR_BIT, VulkanModule::getInstance()->getDevice()->logical);
 	}
 }
 
@@ -47,7 +47,7 @@ void SingleRenderTexture::createFramebuffer(VkExtent2D extent, VkRenderPass pass
 		info.layers = 1;
 		
 		// Create the framebuffer
-		if (vkCreateFramebuffer(VulkanManager::getInstance()->getDevice()->logical, &info, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+		if (vkCreateFramebuffer(VulkanModule::getInstance()->getDevice()->logical, &info, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("Unable to create framebuffer for a texture.");
 	}
 }
@@ -55,12 +55,12 @@ void SingleRenderTexture::createFramebuffer(VkExtent2D extent, VkRenderPass pass
 void SingleRenderTexture::destroy() {
 	// Destroy Image Views first
 	for (auto imageView : swapChainImageViews) {
-		vkDestroyImageView(VulkanManager::getInstance()->getDevice()->logical, imageView, nullptr);
+		vkDestroyImageView(VulkanModule::getInstance()->getDevice()->logical, imageView, nullptr);
 	}
 
 	// Framebuffers
 	for (auto framebuffer : swapChainFramebuffers) {
-		vkDestroyFramebuffer(VulkanManager::getInstance()->getDevice()->logical, framebuffer, nullptr);
+		vkDestroyFramebuffer(VulkanModule::getInstance()->getDevice()->logical, framebuffer, nullptr);
 	}
 
 }

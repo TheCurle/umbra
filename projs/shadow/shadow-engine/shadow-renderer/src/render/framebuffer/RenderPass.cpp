@@ -1,5 +1,5 @@
 #include <vlkx/render/framebuffer/RenderPass.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 
 RenderPass::RenderPass() {}
 RenderPass::~RenderPass() {}
@@ -47,7 +47,7 @@ void RenderPass::createVertexRenderPass(VkFormat format) {
 	createInfo.pSubpasses = &subpass;
 
 	// Create the Render Pass
-	if (vkCreateRenderPass(VulkanManager::getInstance()->getDevice()->logical, &createInfo, nullptr, &pass))
+	if (vkCreateRenderPass(VulkanModule::getInstance()->getDevice()->logical, &createInfo, nullptr, &pass))
 		throw std::runtime_error("Unable to create Render Pass 1");
 }
 
@@ -74,5 +74,5 @@ void RenderPass::endRenderPass(VkCommandBuffer commands) {
 
 
 void RenderPass::destroy() {
-	vkDestroyRenderPass(VulkanManager::getInstance()->getDevice()->logical, pass, nullptr);
+	vkDestroyRenderPass(VulkanModule::getInstance()->getDevice()->logical, pass, nullptr);
 }

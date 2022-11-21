@@ -1,9 +1,10 @@
 #include <vlkx/render/shader/Pipeline.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 
 #include <vlkx/render/Geometry.h>
 #include <string>
 #include <map>
+#include "spdlog/spdlog.h"
 
 Pipeline::Pipeline() {}
 Pipeline::~Pipeline() {}
@@ -21,7 +22,7 @@ void Pipeline::createPipelineLayout(VkDescriptorSetLayout set) {
 	info.pSetLayouts = &set;
 	
 	// Create the layout
-	if (vkCreatePipelineLayout(VulkanManager::getInstance()->getDevice()->logical, &info, nullptr, &layout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(VulkanModule::getInstance()->getDevice()->logical, &info, nullptr, &layout) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Pipeline Layout.");
 }
 
@@ -52,7 +53,7 @@ VkShaderModule Pipeline::createShaderModule(const std::vector<char>& code) {
 
 	// Create the module
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(VulkanManager::getInstance()->getDevice()->logical, &info, nullptr, &shaderModule) != VK_SUCCESS)
+	if (vkCreateShaderModule(VulkanModule::getInstance()->getDevice()->logical, &info, nullptr, &shaderModule) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Shader module from SPIR-V binary");
 
 	return shaderModule;
@@ -183,18 +184,18 @@ void Pipeline::createVertexPipeline(VkExtent2D extent, VkRenderPass renderPass) 
 	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;
 
-	if (vkCreateGraphicsPipelines(VulkanManager::getInstance()->getDevice()->logical, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(VulkanModule::getInstance()->getDevice()->logical, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create a Vertex rendering Pipeline.");
 
 
 	// ------- Cleanup temporary allocations ------- //
 
-	vkDestroyShaderModule(VulkanManager::getInstance()->getDevice()->logical, vertexShaderModule, nullptr);
-	vkDestroyShaderModule(VulkanManager::getInstance()->getDevice()->logical, fragmentShaderModule, nullptr);
+	vkDestroyShaderModule(VulkanModule::getInstance()->getDevice()->logical, vertexShaderModule, nullptr);
+	vkDestroyShaderModule(VulkanModule::getInstance()->getDevice()->logical, fragmentShaderModule, nullptr);
 }
 
 
 void Pipeline::destroy() {
-	vkDestroyPipeline(VulkanManager::getInstance()->getDevice()->logical, pipeline, nullptr);
-	vkDestroyPipelineLayout(VulkanManager::getInstance()->getDevice()->logical, layout, nullptr);
+	vkDestroyPipeline(VulkanModule::getInstance()->getDevice()->logical, pipeline, nullptr);
+	vkDestroyPipelineLayout(VulkanModule::getInstance()->getDevice()->logical, layout, nullptr);
 }

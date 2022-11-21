@@ -23,9 +23,9 @@ namespace ShadowEngine {
 
         ~ModuleManager();
 
-        void PushModule(std::shared_ptr<Module> module, std::string domain);
+        void PushModule(const std::shared_ptr<Module>& module, const std::string& domain);
 
-        Module &GetModule(std::string name);
+        Module &GetModule(const std::string& name);
 
         template<typename T>
         T *GetModuleByType() {

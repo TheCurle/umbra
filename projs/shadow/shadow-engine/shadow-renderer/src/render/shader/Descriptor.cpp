@@ -1,5 +1,5 @@
 #include <vlkx/render/shader/Descriptor.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 #include <vlkx/render/Geometry.h>
 
 #include <array>
@@ -31,7 +31,7 @@ void Descriptor::createSimpleLayout() {
 	info.pBindings = bindings.data();
 
 	// Create the layout
-	if (vkCreateDescriptorSetLayout(VulkanManager::getInstance()->getDevice()->logical, &info, nullptr, &layout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(VulkanModule::getInstance()->getDevice()->logical, &info, nullptr, &layout) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Descriptor layout");
 }
 
@@ -53,7 +53,7 @@ void Descriptor::createSimplePool(uint32_t images) {
 	createInfo.maxSets = images;
 
 	// Create the pool
-	if (vkCreateDescriptorPool(VulkanManager::getInstance()->getDevice()->logical, &createInfo, nullptr, &pool) != VK_SUCCESS)
+	if (vkCreateDescriptorPool(VulkanModule::getInstance()->getDevice()->logical, &createInfo, nullptr, &pool) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Descriptor pool");
 
 	// Prepare to allocate the set
@@ -65,7 +65,7 @@ void Descriptor::createSimplePool(uint32_t images) {
 	allocateInfo.pSetLayouts = layouts.data();
 
 	// Allocate the Set
-	if (vkAllocateDescriptorSets(VulkanManager::getInstance()->getDevice()->logical, &allocateInfo, &set) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(VulkanModule::getInstance()->getDevice()->logical, &allocateInfo, &set) != VK_SUCCESS)
 		throw std::runtime_error("Unable to allocate Descriptor set");
 }
 
@@ -96,13 +96,13 @@ void Descriptor::populate(uint32_t images, VkBuffer uniforms, size_t bufferSize)
 		};
 
 		// Write the buffer into the descriptor
-		vkUpdateDescriptorSets(VulkanManager::getInstance()->getDevice()->logical, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+		vkUpdateDescriptorSets(VulkanModule::getInstance()->getDevice()->logical, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 	}
 }
 
 void Descriptor::destroy() {
-	vkDestroyDescriptorPool(VulkanManager::getInstance()->getDevice()->logical, pool, nullptr);
-	vkDestroyDescriptorSetLayout(VulkanManager::getInstance()->getDevice()->logical, layout, nullptr);
+	vkDestroyDescriptorPool(VulkanModule::getInstance()->getDevice()->logical, pool, nullptr);
+	vkDestroyDescriptorSetLayout(VulkanModule::getInstance()->getDevice()->logical, layout, nullptr);
 }
 
 VkDescriptorSetLayout createBindingWrapper(std::vector<VkDescriptorSetLayoutBinding> bindings) {
@@ -114,7 +114,7 @@ VkDescriptorSetLayout createBindingWrapper(std::vector<VkDescriptorSetLayoutBind
 	VkDescriptorSetLayout layout;
 
 	// Create the layout
-	if (vkCreateDescriptorSetLayout(VulkanManager::getInstance()->getDevice()->logical, &info, nullptr, &layout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(VulkanModule::getInstance()->getDevice()->logical, &info, nullptr, &layout) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Descriptor layout");
 
 	return layout;
@@ -130,7 +130,7 @@ VkDescriptorPool createPoolWrapper(std::vector<VkDescriptorPoolSize> sizes, uint
 	VkDescriptorPool pool;
 
 	// Create the pool
-	if (vkCreateDescriptorPool(VulkanManager::getInstance()->getDevice()->logical, &createInfo, nullptr, &pool) != VK_SUCCESS)
+	if (vkCreateDescriptorPool(VulkanModule::getInstance()->getDevice()->logical, &createInfo, nullptr, &pool) != VK_SUCCESS)
 		throw std::runtime_error("Unable to create Descriptor pool");
 
 	return pool;

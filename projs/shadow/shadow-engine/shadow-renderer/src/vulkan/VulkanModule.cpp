@@ -1,36 +1,162 @@
 #define VMA_IMPLEMENTATION
 
 #include <vulkan/vk_mem_alloc.h>
-
-#define VKTOOLS_IMPLEMENTATION
-
 #include <vlkx/vulkan/Tools.h>
 
-#include <vlkx\vulkan\VulkanManager.h>
+#include <vlkx\vulkan\VulkanModule.h>
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include "core/ShadowApplication.h"
+#include "core/SDL2Module.h"
 
-VulkanManager::VulkanManager() { rayTraceMode = false; }
+#define CATCH(x) \
+    try { x } catch (std::exception& e) { spdlog::error(e.what()); exit(0); }
 
-VulkanManager::~VulkanManager() = default;
+SHObject_Base_Impl(VulkanModule)
 
-VulkanManager* VulkanManager::instance = nullptr;
+VulkanModule::VulkanModule() { instance = this; }
 
+VulkanModule::~VulkanModule() = default;
 
-VmaAllocator             VkTools::g_allocator;
-VkInstance               VkTools::g_Instance = VK_NULL_HANDLE;
-VkPhysicalDevice         VkTools::g_PhysicalDevice = VK_NULL_HANDLE;
-VkDevice                 VkTools::g_Device = VK_NULL_HANDLE;
-uint32_t                 VkTools::g_QueueFamily = (uint32_t)-1;
-VkQueue                  VkTools::g_Queue = VK_NULL_HANDLE;
-VkDebugReportCallbackEXT VkTools::g_DebugReport = VK_NULL_HANDLE;
+VulkanModule* VulkanModule::instance = nullptr;
 
-VulkanManager* VulkanManager::getInstance() {
-    return VulkanManager::instance != nullptr ? VulkanManager::instance
-                                              : (VulkanManager::instance = new VulkanManager());
+VulkanModule* VulkanModule::getInstance() {
+    return VulkanModule::instance != nullptr ? VulkanModule::instance
+                                             : (VulkanModule::instance = new VulkanModule());
 }
 
-void VulkanManager::createAppAndVulkanInstance(bool enableValidation, ValidationAndExtension* validations) {
+void VulkanModule::PreInit() {
+    spdlog::info("Vulkan Renderer Module loading..");
+}
+
+void VulkanModule::Init() {
+
+    auto shApp = ShadowEngine::ShadowApplication::Get();
+
+    ShadowEngine::ModuleManager &moduleManager = shApp.GetModuleManager();
+
+    auto sdl2module = moduleManager.GetModuleByType<ShadowEngine::SDL2Module>();
+
+    CATCH(initVulkan(sdl2module->_window->sdlWindowPtr);)
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    VkDescriptorPool imGuiPool;
+    VkDescriptorPoolSize pool_sizes[] =
+            {
+                    { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+                    { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+                    { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+                    { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+            };
+
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets = 1000 * IM_ARRAYSIZE(pool_sizes);
+    pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+    vkCreateDescriptorPool(getDevice()->logical, &pool_info, VK_NULL_HANDLE, &imGuiPool);
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplSDL2_InitForVulkan(sdl2module->_window->sdlWindowPtr);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = getVulkan();
+    init_info.PhysicalDevice = getDevice()->physical;
+    init_info.Device = getDevice()->logical;
+    init_info.QueueFamily = getDevice()->queueData.graphics;
+    init_info.Queue = getDevice()->graphicsQueue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = imGuiPool;
+    init_info.Subpass = 0;
+    init_info.MinImageCount = getSwapchain()->images.size();
+    init_info.ImageCount = getSwapchain()->images.size();
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.Allocator = VK_NULL_HANDLE;
+    init_info.CheckVkResultFn = nullptr;
+    ImGui_ImplVulkan_Init(&init_info, getRenderPass()->pass);
+
+    // Upload Fonts
+    {
+        // Prepare to create a temporary command pool.
+        VkCommandPool pool;
+        VkCommandPoolCreateInfo poolCreateInfo = {};
+        poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolCreateInfo.queueFamilyIndex = getDevice()->queueData.graphics;
+        poolCreateInfo.flags = 0;
+
+        // Create the pool
+        if (vkCreateCommandPool(getDevice()->logical, &poolCreateInfo, nullptr, &pool) != VK_SUCCESS)
+            throw std::runtime_error("Unable to allocate a temporary command pool");
+
+        VkCommandBuffer buffer = VkTools::createTempCommandBuffer(pool, getDevice()->logical);
+
+        ImGui_ImplVulkan_CreateFontsTexture(buffer);
+
+        VkSubmitInfo end_info = {};
+        end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        end_info.commandBufferCount = 1;
+        end_info.pCommandBuffers = &buffer;
+
+        VkTools::executeAndDeleteTempBuffer(buffer, pool, getDevice()->graphicsQueue, getDevice()->logical);
+
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    }
+
+}
+
+void VulkanModule::PreRender() {
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    startDraw();
+}
+
+void VulkanModule::AfterFrameEnd() {
+    VulkanModule::getInstance()->endDraw();
+}
+
+void VulkanModule::Render() {}
+void VulkanModule::Update() {}
+
+void VulkanModule::Event(SDL_Event *e) { (void)e; }
+
+void VulkanModule::LateRender() {
+
+    ImGui::Render();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VulkanModule::getInstance()->getCurrentCommandBuffer());
+
+    // Update and Render additional Platform Windows
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+    }
+}
+
+void VulkanModule::Destroy() {
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void VulkanModule::createAppAndVulkanInstance(bool enableValidation, ValidationAndExtension* validations) {
     VkApplicationInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     info.pApplicationName = "Sup";
@@ -62,7 +188,7 @@ void VulkanManager::createAppAndVulkanInstance(bool enableValidation, Validation
 
 }
 
-void VulkanManager::initVulkan(SDL_Window* window) {
+void VulkanModule::initVulkan(SDL_Window* window) {
     wnd = window;
     validators = new ValidationAndExtension();
 
@@ -88,10 +214,6 @@ void VulkanManager::initVulkan(SDL_Window* window) {
     allocatorInfo.device = this->device->logical;
     allocatorInfo.instance = this->vulkan;
     vmaCreateAllocator(&allocatorInfo, &this->allocator);
-    VkTools::g_allocator = this->allocator;
-    VkTools::g_PhysicalDevice = this->device->physical;
-    VkTools::g_Device = this->device->logical;
-    VkTools::g_Instance = this->vulkan;
 
     this->swapchain = new SwapChain();
     this->swapchain->create(surface);
@@ -129,7 +251,7 @@ void VulkanManager::initVulkan(SDL_Window* window) {
     spdlog::info("Infinity Drive initialization finished.");
 }
 
-void VulkanManager::startDraw() {
+void VulkanModule::startDraw() {
     // Prepare for a new frame to start
     vkAcquireNextImageKHR(device->logical, swapchain->swapChain,
         std::numeric_limits<uint64_t>::max(), newImageSem,VK_NULL_HANDLE, &imageIndex
@@ -152,7 +274,7 @@ void VulkanManager::startDraw() {
     renderPass->beginRenderPass({ clearColor }, currentCommandBuffer, dynamic_cast<SingleRenderTexture*>(renderTexture)->swapChainFramebuffers[imageIndex], dynamic_cast<SingleRenderTexture*>(renderTexture)->swapChainImageExtent);
 }
 
-void VulkanManager::endDraw() {
+void VulkanModule::endDraw() {
     // End command buffer first
     renderPass->endRenderPass(currentCommandBuffer);
     buffers->endCommandBuffer(currentCommandBuffer);
@@ -174,7 +296,7 @@ void VulkanManager::endDraw() {
     submitInfo.pSignalSemaphores = &renderDoneSem;
 
     // Submit.
-    vkQueueSubmit(VulkanManager::getInstance()->getDevice()->graphicsQueue, 1, &submitInfo, inFlight[imageIndex]);
+    vkQueueSubmit(VulkanModule::getInstance()->getDevice()->graphicsQueue, 1, &submitInfo, inFlight[imageIndex]);
 
     // Prepare to show the drawn frame on the screen.
     VkPresentInfoKHR presentInfo = {};
@@ -187,15 +309,15 @@ void VulkanManager::endDraw() {
     presentInfo.pWaitSemaphores = &renderDoneSem;
 
     // Show.
-    vkQueuePresentKHR(VulkanManager::getInstance()->getDevice()->presentationQueue, &presentInfo);
+    vkQueuePresentKHR(VulkanModule::getInstance()->getDevice()->presentationQueue, &presentInfo);
 
     // Wait for the GPU to catch up
-    vkQueueWaitIdle(VulkanManager::getInstance()->getDevice()->presentationQueue);
+    vkQueueWaitIdle(VulkanModule::getInstance()->getDevice()->presentationQueue);
 }
 
-void VulkanManager::cleanup() {
+void VulkanModule::cleanup() {
     // Wait for the GPU to not be busy
-    vkDeviceWaitIdle(VulkanManager::getInstance()->getDevice()->logical);
+    vkDeviceWaitIdle(VulkanModule::getInstance()->getDevice()->logical);
 
     // Destroy our own data
     vkDestroySemaphore(device->logical, renderDoneSem, nullptr);
@@ -211,7 +333,7 @@ void VulkanManager::cleanup() {
     swapchain->destroy();
 
     // Destroy the Vulkan Device
-    VulkanManager::getInstance()->getDevice()->destroy();
+    VulkanModule::getInstance()->getDevice()->destroy();
 
     // Delete the layer validators.
     validators->destroy(validationRequired, vulkan);

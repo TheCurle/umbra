@@ -13,11 +13,14 @@
 #include <vlkx/vulkan/Tools.h>
 
 #include <SDL_vulkan.h>
+#include "core/Module.h"
 
-class VulkanManager {
+class VulkanModule : public ShadowEngine::Module {
+    SHObject_Base(VulkanModule);
 public:
-	VulkanManager();
-	~VulkanManager();
+
+    VulkanModule();
+	~VulkanModule() override;
 
 #ifdef _DEBUG
 	static const bool validationRequired = true;
@@ -25,9 +28,27 @@ public:
 	static const bool validationRequired = false;
 #endif
 
-	// VulkanManager is a singleton class.
-	static VulkanManager* instance;
-	static VulkanManager* getInstance();
+    void PreInit() override;
+
+    void Init() override;
+
+    void Update() override;
+
+    void PreRender() override;
+
+    void Render() override;
+
+    void LateRender() override;
+
+    void AfterFrameEnd() override;
+
+    void Destroy() override;
+
+    void Event(SDL_Event* e) override;
+
+	// VulkanModule is a singleton class.
+	static VulkanModule* instance;
+	static VulkanModule* getInstance();
 
 	// Initialize all Vulkan context and prepare validations in debug mode.
 	void initVulkan(SDL_Window* window);

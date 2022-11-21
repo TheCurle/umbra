@@ -1,13 +1,13 @@
 #include <vlkx/render/geometry/SingleRenderer.h>
-#include <vlkx/vulkan/VulkanManager.h>
+#include <vlkx/vulkan/VulkanModule.h>
 
 #include <glm/gtc/quaternion.hpp>
 
 void SingleRenderer::createSingleRenderer(Geo::MeshType type, glm::vec3 posIn, glm::vec3 scaleIn) {
 
 	// Collect metadata about the swap chain
-	uint32_t imageCount = VulkanManager::getInstance()->getSwapchain()->images.size();
-	VkExtent2D imageExtent = VulkanManager::getInstance()->getSwapchain()->extent;
+	uint32_t imageCount = VulkanModule::getInstance()->getSwapchain()->images.size();
+	VkExtent2D imageExtent = VulkanModule::getInstance()->getSwapchain()->extent;
 
 	// Create the buffers
 	buffers.createBuffers(type);
@@ -17,7 +17,7 @@ void SingleRenderer::createSingleRenderer(Geo::MeshType type, glm::vec3 posIn, g
 	descriptor.populate(imageCount, buffers.uniformBuffer.buffer, sizeof(Geo::UniformBufferObject));
 
 	// Create the pipeline
-	pipeline.create(imageExtent, descriptor.layout, VulkanManager::getInstance()->getRenderPass()->pass);
+	pipeline.create(imageExtent, descriptor.layout, VulkanModule::getInstance()->getRenderPass()->pass);
 
 	// Set locals
 	position = posIn;
@@ -45,14 +45,14 @@ void SingleRenderer::updateUniforms(Camera camera) {
 
 	// Copy the buffers into the GPU
 	void* data;
-	vmaMapMemory(VulkanManager::getInstance()->getAllocator(), buffers.uniformBuffer.allocation, &data);
+	vmaMapMemory(VulkanModule::getInstance()->getAllocator(), buffers.uniformBuffer.allocation, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vmaUnmapMemory(VulkanManager::getInstance()->getAllocator(), buffers.uniformBuffer.allocation);
+	vmaUnmapMemory(VulkanModule::getInstance()->getAllocator(), buffers.uniformBuffer.allocation);
 }
 
 void SingleRenderer::draw() {
 	// Fetch the buffer we're going to insert commands to
-	VkCommandBuffer commands = VulkanManager::getInstance()->getCurrentCommandBuffer();
+	VkCommandBuffer commands = VulkanModule::getInstance()->getCurrentCommandBuffer();
 
 	// Bind our pipeline
 	vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);

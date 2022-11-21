@@ -15,7 +15,7 @@ void ShadowEngine::Debug::DebugModule::Render() {
 
     ImGui::Text("delta time in ms: %lf", Time::deltaTime_ms);
     ImGui::Text("delta time in s: %lf", Time::deltaTime);
-    ImGui::Text("LAST time in: %ld", Time::LAST);
+    ImGui::Text("LAST time in: %d", Time::LAST);
 
     ImGui::End();
 
@@ -23,14 +23,11 @@ void ShadowEngine::Debug::DebugModule::Render() {
 
     ShadowEngine::ModuleManager* m = ShadowEngine::ModuleManager::instance;
 
-
-
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.4f, 1.0f), "Active Modules:");
     for (auto& module : m->modules)
     {
         ImGui::Text("%s", module.module->GetName().c_str());
     }
-
 
     ImGui::End();
 
