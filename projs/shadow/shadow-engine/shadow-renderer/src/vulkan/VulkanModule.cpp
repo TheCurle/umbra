@@ -31,9 +31,7 @@ VulkanModule* VulkanModule::getInstance() {
 
 void VulkanModule::PreInit() {
     spdlog::info("Vulkan Renderer Module loading..");
-}
 
-void VulkanModule::Init() {
 
     auto shApp = ShadowEngine::ShadowApplication::Get();
 
@@ -99,6 +97,9 @@ void VulkanModule::Init() {
 
     VkTools::immediateExecute([](const VkCommandBuffer& commands) { ImGui_ImplVulkan_CreateFontsTexture(commands); }, getDevice());
 
+}
+
+void VulkanModule::Init() {
 }
 
 void VulkanModule::BeginRenderPass(const std::unique_ptr<vlkx::RenderCommand>& commands) {
@@ -214,6 +215,7 @@ void VulkanModule::initVulkan(SDL_Window* window) {
     allocatorInfo.device = this->device->logical;
     allocatorInfo.instance = this->vulkan;
     vmaCreateAllocator(&allocatorInfo, &this->allocator);
+    VkTools::allocator = allocator;
 
     this->swapchain = new SwapChain();
     this->swapchain->create(surface);

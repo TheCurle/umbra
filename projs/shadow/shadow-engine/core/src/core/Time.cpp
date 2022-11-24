@@ -1,13 +1,13 @@
 #include "core/Time.h"
 #include <chrono>
 
-int Time::NOW = 0;//SDL_GetPerformanceCounter();
-int Time::LAST = 0;
-double lastFrame = 0;
-double Time::deltaTime_ms = 0;
-double Time::deltaTime = 0;
-double Time::startTime = 0;
-double Time::timeSinceStart = 0;
+API int Time::NOW = 0;//SDL_GetPerformanceCounter();
+API int Time::LAST = 0;
+API double lastFrame = 0;
+API double Time::deltaTime_ms = 0;
+API double Time::deltaTime = 0;
+API double Time::startTime = 0;
+API double Time::timeSinceStart = 0;
 
 void Time::UpdateTime()
 {

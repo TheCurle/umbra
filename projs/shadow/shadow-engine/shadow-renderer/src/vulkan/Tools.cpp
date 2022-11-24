@@ -77,7 +77,7 @@ VkTools::ManagedBuffer VkTools::createGPUBuffer(VkDeviceSize size, VkBufferUsage
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    ManagedBuffer buffer;
+    ManagedBuffer buffer {};
 
     VmaAllocationCreateInfo vmaInfo = {};
     vmaInfo.usage = hostVisible ? VMA_MEMORY_USAGE_CPU_ONLY : VMA_MEMORY_USAGE_GPU_ONLY;
