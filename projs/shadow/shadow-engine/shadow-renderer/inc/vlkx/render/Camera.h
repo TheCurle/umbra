@@ -15,7 +15,7 @@ namespace vlkx {
         };
         struct Movement {
             float moveSpeed = 10;
-            float turnSpeed = 0.0005;
+            float turnSpeed = 0.0005f;
             std::optional<glm::vec3> center;
         };
 
@@ -24,7 +24,7 @@ namespace vlkx {
          * Left and forward vectors are calculated from up, pos and target.
          */
         struct Config {
-            float nearPlane = 0.1;                     // The nearest a vertex can be to the camera before being clipped
+            float nearPlane = 0.1f;                     // The nearest a vertex can be to the camera before being clipped
             float farPlane = 100;                      // The furthest a vertex can be from the camera before clipped
             glm::vec3 upV{0, 1, 0};        // The vector pointing straight up from the camera
             glm::vec3 pos{0, 0, 0};        // The position of the camera in the world

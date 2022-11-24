@@ -11,6 +11,8 @@ namespace ShadowEngine {
     public:
         std::shared_ptr<Module> module;
         std::string domain;
+
+        std::shared_ptr<RendererModule> operator->() const { return std::static_pointer_cast<RendererModule>(module); }
     };
 
     class ModuleManager {
@@ -18,6 +20,7 @@ namespace ShadowEngine {
         static ModuleManager *instance;
 
         std::list<ModuleRef> modules;
+        ModuleRef renderer;
 
         ModuleManager();
 
@@ -39,11 +42,13 @@ namespace ShadowEngine {
 
         void Init();
 
-        void Update();
+        void Update(int frame);
 
-        void LateRender();
+        void LateRender(VkCommandBuffer& commands, int frame);
 
-        void Render();
+        void OverlayRender();
+
+        void Render(VkCommandBuffer& commands, int frame);
 
         void PreRender();
 

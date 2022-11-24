@@ -1,9 +1,10 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <optional>
 #include <fstream>
 #include "shadow/util/RefCounter.h"
-#include "vlkx/vulkan/VulkanManager.h"
+#include "vlkx/vulkan/VulkanModule.h"
 
 namespace vlkx {
     class Pipeline;
@@ -20,7 +21,7 @@ namespace vlkx {
         ShaderModule& operator=(const ShaderModule&) = delete;
 
         ~ShaderModule() {
-            vkDestroyShaderModule(VulkanManager::getInstance()->getDevice()->logical, shader, nullptr);
+            vkDestroyShaderModule(VulkanModule::getInstance()->getDevice()->logical, shader, nullptr);
         }
 
         const VkShaderModule& operator*() const { return shader; }
@@ -35,7 +36,7 @@ namespace vlkx {
         PipelineBuilder& operator=(const PipelineBuilder&) = delete;
 
         virtual ~PipelineBuilder() {
-            vkDestroyPipelineCache(VulkanManager::getInstance()->getDevice()->logical, cache, nullptr);
+            vkDestroyPipelineCache(VulkanModule::getInstance()->getDevice()->logical, cache, nullptr);
         }
 
         virtual std::unique_ptr<Pipeline> build() const = 0;

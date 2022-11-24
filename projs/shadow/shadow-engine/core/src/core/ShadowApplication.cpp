@@ -1,17 +1,14 @@
-#include "core/ShadowApplication.h"
+#define STB_IMAGE_IMPLEMENTATION
 
+#include "core/ShadowApplication.h"
 #include "core/Time.h"
 #include "core/SDL2Module.h"
 #include "debug/DebugModule.h"
 #include "dylib.hpp"
-
-
+#include "vlkx/vulkan/abstraction/Commands.h"
 #include <imgui.h>
-#include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl.h>
 #include <vlkx/vulkan/VulkanModule.h>
-#include <vlkx/render/Camera.h>
-#include <vlkx/render/geometry/SingleRenderer.h>
 #include <spdlog/spdlog.h>
 
 #define CATCH(x) \
@@ -22,6 +19,8 @@ namespace ShadowEngine {
     dylib* gameLib;
 
 	ShadowApplication* ShadowApplication::instance = nullptr;
+
+    std::unique_ptr<vlkx::RenderCommand> renderCommands;
 
     ShadowApplication::ShadowApplication(int argc, char* argv[])
 	{
@@ -78,10 +77,13 @@ namespace ShadowEngine {
         moduleManager.PushModule(std::make_shared<Debug::DebugModule>(), "core");
 
         moduleManager.Init();
+        renderCommands = std::make_unique<vlkx::RenderCommand>(2);
 	}
 
 	void ShadowApplication::Start()
 	{
+        const auto update = [&](const int frame) { moduleManager.Update(frame); };
+
         SDL_Event event;
 		while (running)
 		{
@@ -91,13 +93,14 @@ namespace ShadowEngine {
                     running = false;
             }
 
-            moduleManager.Update();
             moduleManager.PreRender();
 
-            moduleManager.Render();
+            moduleManager.renderer->BeginRenderPass(renderCommands);
 
-            moduleManager.LateRender();
             moduleManager.AfterFrameEnd();
+
+            renderCommands->nextFrame();
+            Time::UpdateTime();
 		}
 
         moduleManager.Destroy();

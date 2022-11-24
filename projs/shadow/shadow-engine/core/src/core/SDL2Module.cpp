@@ -24,17 +24,15 @@ void ShadowEngine::SDL2Module::PreInit() {
     _window = new ShadowWindow(800,450);
 }
 
-void ShadowEngine::SDL2Module::Update() {
+void ShadowEngine::SDL2Module::Update(int frame) {
 
 }
 
-void ShadowEngine::SDL2Module::Render() {
+void ShadowEngine::SDL2Module::Render(VkCommandBuffer& commands, int frame) {}
 
-}
+void ShadowEngine::SDL2Module::OverlayRender() {}
 
-void ShadowEngine::SDL2Module::LateRender() {
-
-}
+void ShadowEngine::SDL2Module::LateRender(VkCommandBuffer& commands, int frame) {}
 
 std::string ShadowEngine::SDL2Module::GetName() {
     return this->GetType();

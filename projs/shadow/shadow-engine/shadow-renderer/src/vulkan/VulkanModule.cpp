@@ -8,11 +8,15 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "core/ShadowApplication.h"
 #include "core/SDL2Module.h"
+#include "vlkx/render/render_pass/ScreenRenderPass.h"
+#include <vlkx/vulkan/SwapChain.h>
 
 #define CATCH(x) \
     try { x } catch (std::exception& e) { spdlog::error(e.what()); exit(0); }
 
 SHObject_Base_Impl(VulkanModule)
+
+std::unique_ptr<vlkx::ScreenRenderPassManager> renderPass;
 
 VulkanModule::VulkanModule() { instance = this; }
 
@@ -72,7 +76,7 @@ void VulkanModule::Init() {
     vkCreateDescriptorPool(getDevice()->logical, &pool_info, VK_NULL_HANDLE, &imGuiPool);
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForVulkan(sdl2module->_window->sdlWindowPtr);
+    ImGui_ImplSDL2_InitForVulkan(wnd);
     ImGui_ImplVulkan_InitInfo init_info = {};
     init_info.Instance = getVulkan();
     init_info.PhysicalDevice = getDevice()->physical;
@@ -81,73 +85,63 @@ void VulkanModule::Init() {
     init_info.Queue = getDevice()->graphicsQueue;
     init_info.PipelineCache = VK_NULL_HANDLE;
     init_info.DescriptorPool = imGuiPool;
-    init_info.Subpass = 0;
+    init_info.Subpass = 1;
     init_info.MinImageCount = getSwapchain()->images.size();
     init_info.ImageCount = getSwapchain()->images.size();
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.Allocator = VK_NULL_HANDLE;
     init_info.CheckVkResultFn = nullptr;
-    ImGui_ImplVulkan_Init(&init_info, getRenderPass()->pass);
 
-    // Upload Fonts
-    {
-        // Prepare to create a temporary command pool.
-        VkCommandPool pool;
-        VkCommandPoolCreateInfo poolCreateInfo = {};
-        poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolCreateInfo.queueFamilyIndex = getDevice()->queueData.graphics;
-        poolCreateInfo.flags = 0;
+    renderPass = std::make_unique<vlkx::ScreenRenderPassManager>(vlkx::RendererConfig { 2 } );
+    renderPass->initializeRenderPass();
 
-        // Create the pool
-        if (vkCreateCommandPool(getDevice()->logical, &poolCreateInfo, nullptr, &pool) != VK_SUCCESS)
-            throw std::runtime_error("Unable to allocate a temporary command pool");
+    ImGui_ImplVulkan_Init(&init_info, **renderPass->getPass());
 
-        VkCommandBuffer buffer = VkTools::createTempCommandBuffer(pool, getDevice()->logical);
-
-        ImGui_ImplVulkan_CreateFontsTexture(buffer);
-
-        VkSubmitInfo end_info = {};
-        end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        end_info.commandBufferCount = 1;
-        end_info.pCommandBuffers = &buffer;
-
-        VkTools::executeAndDeleteTempBuffer(buffer, pool, getDevice()->graphicsQueue, getDevice()->logical);
-
-        ImGui_ImplVulkan_DestroyFontUploadObjects();
-    }
+    VkTools::immediateExecute([](const VkCommandBuffer& commands) { ImGui_ImplVulkan_CreateFontsTexture(commands); }, getDevice());
 
 }
 
-void VulkanModule::PreRender() {
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
+void VulkanModule::BeginRenderPass(const std::unique_ptr<vlkx::RenderCommand>& commands) {
+    const auto result = commands->execute(commands->getFrame(), swapchain->swapChain, [](const int frame) { ShadowEngine::ModuleManager::instance->Update(frame); },
+            [this](const VkCommandBuffer& buffer, int frame) {
+                renderPass->getPass()->execute(buffer, frame, {
+                    // Render our model
+                    [&frame](const VkCommandBuffer& commands) {
+                        ShadowEngine::ModuleManager::instance->Render(const_cast<VkCommandBuffer &>(commands), frame);
+                        ShadowEngine::ModuleManager::instance->LateRender(const_cast<VkCommandBuffer &>(commands), frame);
+                    },
+                    // Render ImGUI
+                    [&](const VkCommandBuffer& commands) {
+                        ImGui_ImplVulkan_NewFrame();
+                        ImGui_ImplSDL2_NewFrame();
+                        ImGui::NewFrame();
 
-    startDraw();
+                        ShadowEngine::ModuleManager::instance->OverlayRender();
+
+                        ImGui::Render();
+                        ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+                        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commands);
+
+                        // Update and Render additional Platform Windows
+                        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+                            ImGui::UpdatePlatformWindows();
+                            ImGui::RenderPlatformWindowsDefault();
+                        }
+                    }
+                });
+            }
+    );
 }
 
-void VulkanModule::AfterFrameEnd() {
-    VulkanModule::getInstance()->endDraw();
-}
-
-void VulkanModule::Render() {}
-void VulkanModule::Update() {}
-
+void VulkanModule::PreRender() {}
+void VulkanModule::OverlayRender() {}
+void VulkanModule::AfterFrameEnd() {}
+void VulkanModule::Render(VkCommandBuffer& commands, int frame) {}
+void VulkanModule::Update(int frame) {}
 void VulkanModule::Event(SDL_Event *e) { (void)e; }
 
-void VulkanModule::LateRender() {
-
-    ImGui::Render();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VulkanModule::getInstance()->getCurrentCommandBuffer());
-
-    // Update and Render additional Platform Windows
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-    }
+void VulkanModule::LateRender(VkCommandBuffer& commands, int frame) {
 }
 
 void VulkanModule::Destroy() {
@@ -167,7 +161,12 @@ void VulkanModule::createAppAndVulkanInstance(bool enableValidation, ValidationA
 
     VkInstanceCreateInfo instanceInfo = {};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#ifdef __APPLE__
+    VkFlags instanceFlag = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#else
+    VkFlags instanceFlag = 0;
+#endif
+    instanceInfo.flags = instanceFlag;
     instanceInfo.pApplicationInfo = &info;
 
     auto extensions = validations->getRequiredExtensions(wnd, true);
@@ -218,119 +217,13 @@ void VulkanModule::initVulkan(SDL_Window* window) {
 
     this->swapchain = new SwapChain();
     this->swapchain->create(surface);
-
-    this->renderPass = new RenderPass();
-
-    // Set up for vertex rendering
-    this->renderPass->createVertexRenderPass(swapchain->format);
-    this->renderTexture = new SingleRenderTexture();
-
-    this->renderTexture->createViewsAndFramebuffer(swapchain->images, swapchain->format,
-        swapchain->extent,renderPass->pass
-    );
-
-    this->buffers = new CommandBuffer();
-    this->buffers->createCommandPoolAndBuffers(swapchain->images.size());
-
-    // Create semaphores for render events
-    VkSemaphoreCreateInfo semaphoreInfo = {};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    vkCreateSemaphore(device->logical, &semaphoreInfo, nullptr, &newImageSem);
-    vkCreateSemaphore(device->logical, &semaphoreInfo, nullptr, &renderDoneSem);
-
-    // Create fences for the frames
-    inFlight.resize(MAX_FRAMES);
-    VkFenceCreateInfo fenceInfo = {};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    for (size_t i = 0; i < MAX_FRAMES; i++) {
-        if (vkCreateFence(device->logical, &fenceInfo, nullptr, &inFlight[i]) != VK_SUCCESS)
-            throw std::runtime_error("Unable to create fence for a frame");
-    }
-
     spdlog::info("Infinity Drive initialization finished.");
-}
-
-void VulkanModule::startDraw() {
-    // Prepare for a new frame to start
-    vkAcquireNextImageKHR(device->logical, swapchain->swapChain,
-        std::numeric_limits<uint64_t>::max(), newImageSem,VK_NULL_HANDLE, &imageIndex
-    );
-
-    vkWaitForFences(device->logical, 1, &inFlight[imageIndex], VK_TRUE,
-        std::numeric_limits<uint64_t>::max()
-    );
-
-    vkResetFences(device->logical, 1, &inFlight[imageIndex]);
-
-    // Fetch the next command buffer
-    currentCommandBuffer = buffers->buffers[imageIndex];
-    buffers->beginCommandBuffer(currentCommandBuffer);
-
-    // Setup render pass; setup clear color
-    VkClearValue clearColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red
-
-    // Execute render pass
-    renderPass->beginRenderPass({ clearColor }, currentCommandBuffer, dynamic_cast<SingleRenderTexture*>(renderTexture)->swapChainFramebuffers[imageIndex], dynamic_cast<SingleRenderTexture*>(renderTexture)->swapChainImageExtent);
-}
-
-void VulkanModule::endDraw() {
-    // End command buffer first
-    renderPass->endRenderPass(currentCommandBuffer);
-    buffers->endCommandBuffer(currentCommandBuffer);
-
-    // Prepare to submit all draw commands to the GPU
-    VkPipelineStageFlags waitStages[] = {
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-    };
-
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &currentCommandBuffer;
-    submitInfo.pWaitDstStageMask = waitStages;
-    // Wait for the New Image semaphore, and signal the Render Done semaphore when finished
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &newImageSem;
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &renderDoneSem;
-
-    // Submit.
-    vkQueueSubmit(VulkanModule::getInstance()->getDevice()->graphicsQueue, 1, &submitInfo, inFlight[imageIndex]);
-
-    // Prepare to show the drawn frame on the screen.
-    VkPresentInfoKHR presentInfo = {};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &swapchain->swapChain;
-    presentInfo.pImageIndices = &imageIndex;
-    // Wait until render is finished before presenting.
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &renderDoneSem;
-
-    // Show.
-    vkQueuePresentKHR(VulkanModule::getInstance()->getDevice()->presentationQueue, &presentInfo);
-
-    // Wait for the GPU to catch up
-    vkQueueWaitIdle(VulkanModule::getInstance()->getDevice()->presentationQueue);
 }
 
 void VulkanModule::cleanup() {
     // Wait for the GPU to not be busy
     vkDeviceWaitIdle(VulkanModule::getInstance()->getDevice()->logical);
 
-    // Destroy our own data
-    vkDestroySemaphore(device->logical, renderDoneSem, nullptr);
-    vkDestroySemaphore(device->logical, newImageSem, nullptr);
-
-    for (size_t i = 0; i < MAX_FRAMES; i++) {
-        vkDestroyFence(device->logical, inFlight[i], nullptr);
-    }
-
-    buffers->destroy();
-    renderTexture->destroy();
-    renderPass->destroy();
     swapchain->destroy();
 
     // Destroy the Vulkan Device
@@ -345,10 +238,6 @@ void VulkanModule::cleanup() {
 
     vmaDestroyAllocator(allocator);
 
-    // Delete allocated memory for our own data.
-    delete buffers;
-    delete renderTexture;
-    delete renderPass;
     delete swapchain;
     delete device;
     delete validators;

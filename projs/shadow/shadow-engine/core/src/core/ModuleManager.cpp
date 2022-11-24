@@ -24,6 +24,8 @@ void ShadowEngine::ModuleManager::PushModule(const std::shared_ptr<Module>& modu
 {
     ModuleRef r = {module, domain};
     modules.emplace_back(r);
+    if (domain == "renderer")
+        renderer = r;
     module->PreInit();
 }
 
@@ -71,27 +73,35 @@ void ShadowEngine::ModuleManager::Event(SDL_Event* evt)
     }
 }
 
-void ShadowEngine::ModuleManager::Update()
+void ShadowEngine::ModuleManager::Update(int frame)
 {
     for (auto& module : modules)
     {
-        module.module->Update();
+        module.module->Update(frame);
     }
 }
 
-void ShadowEngine::ModuleManager::LateRender()
+void ShadowEngine::ModuleManager::LateRender(VkCommandBuffer& commands, int frame)
 {
     for (auto& module : modules)
     {
-        module.module->LateRender();
+        module.module->LateRender(commands, frame);
     }
 }
 
-void ShadowEngine::ModuleManager::Render()
+void ShadowEngine::ModuleManager::Render(VkCommandBuffer& commands, int frame)
 {
     for (auto& module : modules)
     {
-        module.module->Render();
+        module.module->Render(commands, frame);
+    }
+}
+
+void ShadowEngine::ModuleManager::OverlayRender()
+{
+    for (auto& module : modules)
+    {
+        module.module->OverlayRender();
     }
 }
 

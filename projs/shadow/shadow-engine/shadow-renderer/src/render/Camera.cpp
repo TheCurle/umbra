@@ -78,13 +78,13 @@ bool UserCamera<Type>::scroll(double delta, double min, double max) {
     if (!isActive) return false;
 
     if constexpr (std::is_same_v<Type, PerspectiveCamera>) {
-        const float newFov = glm::clamp(camera->getFieldOfView() + delta, min, max);
+        auto newFov = (float) glm::clamp(camera->getFieldOfView() + delta, min, max);
         if (newFov != camera->getFieldOfView()) {
             camera->fieldOfView(newFov);
             return true;
         }
     } else if constexpr (std::is_same_v<Type, OrthographicCamera>) {
-        const float newWidth = glm::clamp(camera->getWidth() + delta, min, max);
+        const auto newWidth = (float) glm::clamp(camera->getWidth() + delta, min, max);
         if (newWidth != camera->getWidth()) {
             camera->setWidth(newWidth);
             return true;

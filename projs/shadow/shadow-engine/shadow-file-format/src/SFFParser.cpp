@@ -1,5 +1,5 @@
 #include "SFFParser.h"
-#include "../../shadow-utility/inc/string-helpers.h"
+#include "string-helpers.h"
 
 #include <fstream>
 

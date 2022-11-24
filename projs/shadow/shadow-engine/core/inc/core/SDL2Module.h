@@ -8,7 +8,7 @@
 #include "Module.h"
 #include "ShadowWindow.h"
 
-#include <SDL.h>
+#include "SDL.h"
 
 namespace ShadowEngine {
 
@@ -23,11 +23,13 @@ namespace ShadowEngine {
 
         void PreInit() override;
 
-        void Update() override;
+        void Update(int frame) override;
 
-        void Render() override;
+        void Render(VkCommandBuffer& commands, int frame) override;
 
-        void LateRender() override;
+        void OverlayRender() override;
+
+        void LateRender(VkCommandBuffer& commands, int frame) override;
 
         std::string GetName() override;
 

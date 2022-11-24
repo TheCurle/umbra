@@ -2,17 +2,15 @@
 
 #include <vlkx/vulkan/ValidationAndExtension.h>
 #include <vlkx/vulkan/VulkanDevice.h>
-#include <vlkx/vulkan/SwapChain.h>
 
 #include <vulkan/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include <vlkx/vulkan/Tools.h>
-
 #include <SDL_vulkan.h>
-#include "core/Module.h"
+#include <core/Module.h>
+#include "SwapChain.h"
 
-class VulkanModule : public ShadowEngine::Module {
+class VulkanModule : public ShadowEngine::RendererModule {
     SHObject_Base(VulkanModule);
 public:
 
@@ -29,19 +27,23 @@ public:
 
     void Init() override;
 
-    void Update() override;
+    void Update(int frame) override;
 
     void PreRender() override;
 
-    void Render() override;
+    void Render(VkCommandBuffer& commands, int frame) override;
 
-    void LateRender() override;
+    void OverlayRender() override;
+
+    void LateRender(VkCommandBuffer& commands, int frame) override;
 
     void AfterFrameEnd() override;
 
     void Destroy() override;
 
     void Event(SDL_Event* e) override;
+
+    void BeginRenderPass(const std::unique_ptr<vlkx::RenderCommand>& commands) override;
 
 	// VulkanModule is a singleton class.
 	static VulkanModule* instance;
@@ -64,8 +66,6 @@ public:
 	VmaAllocator getAllocator() { return allocator; }
     SDL_Window* getWind() { return wnd; }
 
-    int getMaxFrames() { return MAX_FRAMES; }
-
 private:
     // To keep track of the window during... stuff
     SDL_Window* wnd;
@@ -84,8 +84,5 @@ private:
 	VkInstance vulkan{};
 	// To manage the canvas that was given to us by GLFW
 	VkSurfaceKHR surface{};
-
-	// The maximum number of frames that can be dealt with at a time.
-	const int MAX_FRAMES = 2; // Double-buffering requires two frames in memory
 
 };

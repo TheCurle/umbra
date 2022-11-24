@@ -1,9 +1,14 @@
 #include <vlkx/vulkan/Tools.h>
+#include <string>
+#include "vlkx/vulkan/abstraction/Commands.h"
 
-VkTools::ManagedImage VkTools::createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent, VkDevice device) {
+VmaAllocator VkTools::allocator;
+
+VkTools::ManagedImage VkTools::createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent) {
     // Set up image metadata
     VkImageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    info.imageType = VK_IMAGE_TYPE_3D;
     info.pNext = nullptr;
     info.format = format;
     info.extent = extent;
@@ -21,42 +26,41 @@ VkTools::ManagedImage VkTools::createImage(VkFormat format, VkImageUsageFlags fl
     allocateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
     // Allocate + create the image
-    vmaCreateImage(VulkanModule::instance->getAllocator(), &info, &allocateInfo, &image.image, &image.allocation, nullptr);
+    vmaCreateImage(allocator, &info, &allocateInfo, &image.image, &image.allocation, nullptr);
 
     return image;
-
 }
 
-VkSampler VkTools::createSampler(VkFilter filters, VkSamplerAddressMode mode) {
-    VkSamplerCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    info.pNext = nullptr;
-    info.magFilter = filters;
-    info.minFilter = filters;
-    info.addressModeU = mode;
-    info.addressModeV = mode;
-    info.addressModeW = mode;
+VkSampler VkTools::createSampler(VkFilter filters, VkSamplerAddressMode mode, uint32_t mipping, VkDevice dev) {
+    VkSamplerCreateInfo info = {
+            VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            nullptr, {}, filters, filters,
+            VK_SAMPLER_MIPMAP_MODE_LINEAR, mode, mode, mode,
+            0, VK_TRUE, 16, VK_FALSE,
+            VK_COMPARE_OP_ALWAYS, 0, static_cast<float>(mipping),
+            VK_BORDER_COLOR_INT_OPAQUE_BLACK, VK_FALSE
+    };
 
     VkSampler sampler;
-    vkCreateSampler(VulkanModule::instance->getDevice()->logical, &info, nullptr, &sampler);
+    vkCreateSampler(dev, &info, nullptr, &sampler);
 
     return sampler;
 }
 
-VkImageView VkTools::createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, VkDevice device) {
+VkImageView VkTools::createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags, uint32_t mipping, uint32_t layers, VkDevice device) {
     // Raw information about the image
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_CUBE;
     viewInfo.format = format;
 
     // Information about the things we want to create - size, mip levels.
     viewInfo.subresourceRange.aspectMask = flags;
     viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.levelCount = mipping;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.subresourceRange.layerCount = layers;
 
     VkImageView imageView;
     if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
@@ -80,13 +84,13 @@ VkTools::ManagedBuffer VkTools::createGPUBuffer(VkDeviceSize size, VkBufferUsage
     vmaInfo.requiredFlags = properties;
 
     // Create the buffer.
-    if (vmaCreateBuffer(VulkanModule::instance->getAllocator(), &bufferInfo, &vmaInfo, &buffer.buffer, &buffer.allocation, nullptr) != VK_SUCCESS)
-        throw std::runtime_error("Unable to create GPU buffer");
+    if (VkResult status = vmaCreateBuffer(allocator, &bufferInfo, &vmaInfo, &buffer.buffer, &buffer.allocation, nullptr); status != VK_SUCCESS)
+        throw std::runtime_error("Unable to create GPU buffer: " + std::to_string(status));
 
     return buffer;
 }
 
-uint32_t VkTools::findMemoryIndex(uint32_t type, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice) {
+uint32_t findMemoryIndex(uint32_t type, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice) {
     // Get the physical properties of the device.
     VkPhysicalDeviceMemoryProperties physProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physProperties);
@@ -100,80 +104,20 @@ uint32_t VkTools::findMemoryIndex(uint32_t type, VkMemoryPropertyFlags propertie
     throw std::runtime_error("Unable to find a suitable memory type on the physical device.");
 }
 
-VkCommandBuffer VkTools::createTempCommandBuffer(VkCommandPool pool, VkDevice logical) {
-    // Prepare to allocate a command buffer
-    VkCommandBufferAllocateInfo allocateInfo = {};
-    allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocateInfo.commandPool = pool;
-    allocateInfo.commandBufferCount = 1;
-
-    // Allocate the buffer
-    VkCommandBuffer buffer;
-    vkAllocateCommandBuffers(logical, &allocateInfo, &buffer);
-
-    // Prepare to begin the new buffer.
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    // Begin listening on the new buffer.
-    vkBeginCommandBuffer(buffer, &beginInfo);
-
-    return buffer;
+void VkTools::immediateExecute(const std::function<void(const VkCommandBuffer&)>& execute, VulkanDevice* dev) {
+    vlkx::ImmediateCommand cmd({ dev->graphicsQueue, dev->queueData.graphics });
+    cmd.run(execute);
 }
 
-void VkTools::executeAndDeleteTempBuffer(VkCommandBuffer buffer, VkCommandPool pool, VkQueue queue, VkDevice logicalDevice) {
-    // Stop listening on the buffer
-    vkEndCommandBuffer(buffer);
+void VkTools::copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VulkanDevice* dev) {
+    immediateExecute([&](const VkCommandBuffer& commands) {
+        // Prepare to copy the data between buffers
+        VkBufferCopy copyInfo = {};
+        copyInfo.srcOffset = 0;
+        copyInfo.dstOffset = 0;
+        copyInfo.size = length;
 
-    // Prepare to execute the commands in the buffer
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &buffer;
-
-    // Submit the commands to be executed
-    vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-
-    // Wait for the GPU to finish executing
-    vkQueueWaitIdle(queue);
-
-    // Delete the now unusable buffers
-    vkFreeCommandBuffers(logicalDevice, pool, 1, &buffer);
-}
-
-void VkTools::copyGPUBuffer(VkBuffer source, VkBuffer dest, VkDeviceSize length, VkDevice logical, VkQueue graphicsQueue, uint32_t queueIndex) {
-
-    // Prepare to create a temporary command pool.
-    VkCommandPool pool;
-    VkCommandPoolCreateInfo poolCreateInfo = {};
-    poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolCreateInfo.queueFamilyIndex = queueIndex;
-    poolCreateInfo.flags = 0;
-
-    // Create the pool
-    if (vkCreateCommandPool(logical, &poolCreateInfo, nullptr, &pool) != VK_SUCCESS)
-        throw std::runtime_error("Unable to allocate a temporary command pool");
-
-    // Allocate a buffer
-    VkCommandBuffer commands = createTempCommandBuffer(pool, logical);
-
-    // ------ Commands are saved into the commands field ------ //
-
-    // Prepare to copy the data between buffers
-    VkBufferCopy copyInfo = {};
-    copyInfo.srcOffset = 0;
-    copyInfo.dstOffset = 0;
-    copyInfo.size = length;
-
-    // Copy the data.
-    vkCmdCopyBuffer(commands, source, dest, 1, &copyInfo);
-
-    // ------ Commands are no longer saved into the commands field ------ //
-
-    executeAndDeleteTempBuffer(commands, pool, graphicsQueue, logical);
-
-    // Cleanup the temporary buffer and pool we created
-    vkDestroyCommandPool(logical, pool, nullptr);
+        // Copy the data.
+        vkCmdCopyBuffer(commands, source, dest, 1, &copyInfo);
+    }, dev);
 }
