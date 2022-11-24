@@ -2,7 +2,7 @@
 #include <string>
 #include "vlkx/vulkan/abstraction/Commands.h"
 
-VmaAllocator VkTools::allocator;
+API VmaAllocator VkTools::allocator;
 
 VkTools::ManagedImage VkTools::createImage(VkFormat format, VkImageUsageFlags flags, VkExtent3D extent) {
     // Set up image metadata

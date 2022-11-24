@@ -10,6 +10,8 @@
 #include <core/Module.h>
 #include "SwapChain.h"
 
+namespace vlkx { class ScreenRenderPassManager; }
+
 class VulkanModule : public ShadowEngine::RendererModule {
     SHObject_Base(VulkanModule);
 public:
@@ -65,6 +67,7 @@ public:
 	SwapChain* getSwapchain() { return swapchain; }
 	VmaAllocator getAllocator() { return allocator; }
     SDL_Window* getWind() { return wnd; }
+    const std::unique_ptr<vlkx::ScreenRenderPassManager>& getRenderPass();
 
 private:
     // To keep track of the window during... stuff

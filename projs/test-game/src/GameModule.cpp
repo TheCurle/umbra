@@ -7,6 +7,7 @@
 #include "core/Time.h"
 #include "vlkx/render/Camera.h"
 #include "vlkx/vulkan/abstraction/Buffer.h"
+#include "vlkx/render/render_pass/ScreenRenderPass.h"
 #include "temp/model/Builder.h"
 
 #define CATCH(x) \
@@ -45,6 +46,7 @@ void GameModule::Init() {
             .shader(VK_SHADER_STAGE_FRAGMENT_BIT, "resources/walrus/cube.frag.spv")
             .build();
 
+    cube_model_->update(true, extent, VK_SAMPLE_COUNT_1_BIT, *VulkanModule::getInstance()->getRenderPass()->getPass(), 0);
 }
 
 void GameModule::Update(int frame) {

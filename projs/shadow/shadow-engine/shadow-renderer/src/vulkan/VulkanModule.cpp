@@ -18,6 +18,10 @@ SHObject_Base_Impl(VulkanModule)
 
 std::unique_ptr<vlkx::ScreenRenderPassManager> renderPass;
 
+const std::unique_ptr<vlkx::ScreenRenderPassManager>& VulkanModule::getRenderPass() {
+    return renderPass;
+}
+
 VulkanModule::VulkanModule() { instance = this; }
 
 VulkanModule::~VulkanModule() = default;
