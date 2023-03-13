@@ -4,10 +4,9 @@ find_package(SDL2 CONFIG REQUIRED)
 find_package(ImGui REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+#set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_library(shadow-engine SHARED
-        platforms/linux/inc/sal.h)
+add_subdirectory(shadow-assets)
 
 FILE(GLOB_RECURSE SOURCES
         core/src/**/*.cpp
