@@ -5,14 +5,13 @@ find_package(imgui REQUIRED)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_subdirectory(shadow-assets)
-
 FILE(GLOB_RECURSE SOURCES
         core/src/*.cpp
         shadow-entity/src/*.cpp
         shadow-renderer/src/*.cpp
         shadow-reflection/src/*.cpp
         shadow-utility/src/*.cpp
+        shadow-assets/src/*.cpp
         )
 FILE(GLOB_RECURSE HEADERS
         core/inc/*.h
@@ -20,6 +19,7 @@ FILE(GLOB_RECURSE HEADERS
         shadow-renderer/inc/*.h
         shadow-reflection/inc/*.h
         shadow-utility/inc/*.h
+        shadow-assets/src/*.h
         )
 
 add_library(shadow-engine SHARED ${SOURCES} $<TARGET_OBJECTS:imgui>)
@@ -32,6 +32,7 @@ target_include_directories(shadow-engine
             shadow-renderer/inc
             shadow-reflection/inc
             shadow-utility/inc
+            shadow-assets/src
         ${glm_SOURCE_DIR}
         INTERFACE
             ${imgui_SOURCE_DIR}
