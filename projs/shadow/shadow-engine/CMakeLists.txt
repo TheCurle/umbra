@@ -17,7 +17,7 @@ FILE(GLOB_RECURSE SOURCES
         shadow-reflection/src/*.cpp
         shadow-utility/src/*.cpp
         shadow-math/src/*.cpp
-)
+        )
 list(FILTER SOURCES EXCLUDE REGEX ".*.test.cpp$")
 
 SET(IncludeDirs
