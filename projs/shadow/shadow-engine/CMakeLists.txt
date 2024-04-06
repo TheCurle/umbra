@@ -14,7 +14,7 @@ add_executable(shadow-engine-tests)
 target_link_libraries(shadow-engine-tests
         Catch2::Catch2
         shadow::engine
-)
+        )
 
 add_subdirectory(assets)
 add_subdirectory(core)
@@ -36,12 +36,12 @@ target_link_libraries(shadow-engine
         #        ImGui
         GPUOpen::VulkanMemoryAllocator
         Vulkan::Vulkan
-)
+        )
 
 target_compile_definitions(shadow-engine
         PRIVATE
         EXPORTING_SH_ENGINE
-)
+        )
 
 if (TRUE)
 
@@ -53,20 +53,17 @@ if (TRUE)
             ${imgui_SOURCE_DIR}/imgui_widgets.cpp
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
             ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
-    )
+            )
 
     target_include_directories(shadow-engine
             PUBLIC
             ${imgui_SOURCE_DIR}
             ${imgui_SOURCE_DIR}/backends
-    )
+            )
 
     target_compile_definitions(shadow-engine
             PRIVATE
             IMGUI_USER_CONFIG="shadow/imguiConf.h"
-    )
+            )
 
 endif ()
-
-
-
