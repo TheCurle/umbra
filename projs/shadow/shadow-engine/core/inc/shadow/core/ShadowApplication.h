@@ -8,6 +8,7 @@
 #include "shadow/event-bus/event_bus.h"
 #include "shadow/assets/fs/file.h"
 #include "Engine.h"
+#include "renderer/Interface.h"
 
 #include <string>
 
@@ -20,6 +21,7 @@ namespace SH {
       SHObject_Base(ShadowApplication)
     public:
       static std::unique_ptr<ShadowEngine::Engine> engine;
+      static std::unique_ptr<rx::Interface> graphicsInterface;
       /// <summary>
         /// This is the singleton instance
         /// </summary>
