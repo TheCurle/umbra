@@ -2,7 +2,7 @@
 #include <renderer/Interface.h>
 #include <renderer/ImageRenderer.h>
 #include <renderer/interfaces/Sprite.h>
-#include <renderer/interfaces/FontAtlas.h>
+#include <renderer/interfaces/FontSprite.h>
 
 namespace rx {
     void Renderer2D::ResizeBuffers() {
