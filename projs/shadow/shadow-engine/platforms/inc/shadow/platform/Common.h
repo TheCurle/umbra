@@ -33,6 +33,8 @@ namespace Platform {
 
   void GetExecutableDirectory(const std::string& data);
 
+  size_t GetProcessMemory();
+
 
 
 }

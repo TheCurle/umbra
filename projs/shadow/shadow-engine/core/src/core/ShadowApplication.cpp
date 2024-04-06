@@ -20,8 +20,6 @@ namespace SH {
 
   ShadowApplication *ShadowApplication::instance = nullptr;
 
-  std::unique_ptr<ShadowEngine::FileSystem> ShadowApplication::diskFS = ShadowEngine::FileSystem::createDiskFS("./");
-
   ShadowApplication::ShadowApplication(int argc, char *argv[]) {
       instance = this;
 
@@ -60,6 +58,14 @@ namespace SH {
       }
 
       moduleManager.Init();
+
+      ShadowEngine::Engine::Initialization data;
+
+      if (std::filesystem::exists(std::filesystem::current_path().append("/main.sff")))
+          data.fs = ShadowEngine::FileSystem::createVFS("main.sff");
+
+      engine = ShadowEngine::Engine::create(static_cast<ShadowEngine::Engine::Initialization&&>(data));
+      engine->init();
 
 
   }

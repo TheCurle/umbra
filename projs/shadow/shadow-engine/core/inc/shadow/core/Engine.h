@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include "shadow/assets/fs/file.h"
+#include "shadow/assets/resource/ResourceManager.h"
 #include <system/EngineSystem.h>
 
 namespace ShadowEngine {
@@ -26,8 +27,8 @@ namespace ShadowEngine {
 
     virtual struct FileSystem& getFileSystem() = 0;
 
-    virtual struct SystemManager getSystemManager() = 0;
-    virtual struct ResourceManager getResourceManager() = 0;
+    virtual SystemManager & getSystemManager() = 0;
+    virtual ResourceManager & getResourceManager() = 0;
 
     virtual void startGame(World& world) = 0;
     virtual void stopGame(World& world) = 0;
@@ -35,6 +36,7 @@ namespace ShadowEngine {
     virtual void update(World& world) = 0;
 
     virtual float getLastTimeDelta() const = 0;
+    virtual void calculateSmoothedDeltas() = 0;
     virtual void setTimeScale(float multiplier) = 0;
     virtual void pause(bool pause) = 0;
     virtual bool isPaused() const = 0;

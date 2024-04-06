@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <string>
+#include <psapi.h>
 #include "spdlog/spdlog.h"
 
 namespace Platform {
@@ -38,6 +39,16 @@ namespace Platform {
       if (::GetCurrentDirectory(lengthOf(tmp), tmp) == ERROR_SUCCESS) {
           ((std::string&)data).append(tmp);
       }
+  }
+
+  size_t GetProcessMemory() {
+      PROCESS_MEMORY_COUNTERS counters;
+      if (GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters)) != 0) {
+          return counters.WorkingSetSize;
+      }
+
+      assert(false);
+      return 0;
   }
 
 }

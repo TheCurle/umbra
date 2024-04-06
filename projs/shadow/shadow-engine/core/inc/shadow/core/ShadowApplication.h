@@ -7,6 +7,7 @@
 #include "imgui_impl_vulkan.h"
 #include "shadow/event-bus/event_bus.h"
 #include "shadow/assets/fs/file.h"
+#include "Engine.h"
 
 #include <string>
 
@@ -18,7 +19,7 @@ namespace SH {
     class API ShadowApplication : SH::SHObject {
       SHObject_Base(ShadowApplication)
     public:
-      static std::unique_ptr<ShadowEngine::FileSystem> diskFS;
+      static std::unique_ptr<ShadowEngine::Engine> engine;
       /// <summary>
         /// This is the singleton instance
         /// </summary>

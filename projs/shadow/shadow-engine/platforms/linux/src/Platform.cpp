@@ -28,4 +28,9 @@ namespace Platform {
           ((std::string&)data).data()[0] = 0;
   }
 
+  size_t GetProcessMemory() {
+      // TODO
+      return 0;
+  }
+
 }
