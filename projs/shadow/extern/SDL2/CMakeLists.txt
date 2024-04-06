@@ -1,5 +1,4 @@
 
-
 # We need to fetch SDL2 for the runtime on Windows
 if (WIN32)
     # Fetch SDL for the runtime
@@ -10,5 +9,5 @@ if (WIN32)
     FetchContent_MakeAvailable(SDL2)
     set(SDL2_DIR ${sdl2_SOURCE_DIR})
     list(PREPEND CMAKE_PREFIX_PATH "${sdl2_SOURCE_DIR}/cmake")
-
+    message("SDL2 setup")
 endif ()
