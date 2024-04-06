@@ -45,7 +45,7 @@ namespace ShadowEngine {
         static std::string replaceExtension(const std::string& path, const std::string& newExt);
 
         Path();
-        explicit Path(const std::string& str);
+        Path(const std::string& str);
 
         Path& operator=(const std::string& rhs);
         bool operator==(const std::string& rhs);

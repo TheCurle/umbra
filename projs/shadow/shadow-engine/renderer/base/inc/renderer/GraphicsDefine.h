@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 #include "shadow/traits/Bitmask.h"
+#include "shadow/assets/resource/Resource.h"
 
 /**
  * Contains enums and structs that are used by Render classes.
@@ -1465,7 +1466,7 @@ namespace rx {
      * A texture holds pixel data that can be mapped onto an object according to uv values in the pixel buffer.
      * Textures can hold subresources (such as textures with mipping - the mipped textures are subresources within the primary.)
      */
-    resource(Texture) {
+    resource(Texture), public ShadowEngine::Resource {
         TextureMeta meta;
 
         const SubresourceMeta *mappedResources = nullptr;
@@ -1474,6 +1475,8 @@ namespace rx {
         const SparseTextureMeta *sparse;
 
         constexpr const TextureMeta &getMeta() const { return meta; }
+        static const ShadowEngine::ResourceType TYPE;
+        ShadowEngine::ResourceType getType() const override { return TYPE; }
     };
 
     /**

@@ -25,7 +25,7 @@ namespace rx {
     // The style information of the font contained.
     rx::Font::RenderMode params;
     // The resource of the font being used.
-    ShadowEngine::Resource fontResource;
+    rx::Font::FontResource fontResource;
     // The filename of the font being used.
     std::string fontName;
 
@@ -50,7 +50,7 @@ namespace rx {
     // A helper to define a bitwise flag setter.
     #define SET(x, y) constexpr void Set##x(bool val = true) { if (val) flags |= (y); else flags &= ~(y); }
     // A helper to define a bitwise flag getter.
-    #define GET(x, y) constexpr bool Get##x() const { return flags & (y); }
+    #define GET(x, y) constexpr bool Is##x() const { return flags & (y); }
 
     SET(Hidden, HIDDEN);
     SET(Static, STATIC);
@@ -76,7 +76,7 @@ namespace rx {
     void SetText(std::wstring&& val);
 
     // Get the text being displayed.
-    const std::string& GetText() const;
+    const std::string GetText() const;
     const std::wstring& GetTextA() const;
 
     // Get the overall length of the text, in pixels in screenspace.

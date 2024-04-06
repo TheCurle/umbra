@@ -2,6 +2,8 @@
 
 #include "renderer/assets/RenderResource.h"
 #include "imstb_rectpack.h"
+#include "shadow/assets/resource/Resource.h"
+#include "renderer/ImageRenderer.h"
 
 namespace rx {
     class Sprite {
@@ -20,8 +22,8 @@ namespace rx {
         std::string maskName;
 
         Image::RenderMode params;
-        Resource textureResource;
-        Resource maskResource;
+        ShadowEngine::Resource textureResource;
+        ShadowEngine::Resource maskResource;
 
         Sprite(const std::string& newTexture = "", const std::string& newMask = "");
         virtual ~Sprite() = default;
@@ -30,15 +32,15 @@ namespace rx {
         virtual void Update(float dt);
         virtual void Draw(ThreadCommands cmd) const;
 
-#define GET_SET_RENDER_MODE(x, y)                   \
-        constexpr void Set##x(bool val = true) {    \
-            if (val)                                \
-                flags |= y;                         \
-            else                                    \
-                flags &= y;                         \
-        }                                           \
-                                                    \
-        constexpr bool Is##x() { return flags & y; }
+        #define GET_SET_RENDER_MODE(x, y)                   \
+        constexpr void Set##x(bool val = true) {            \
+            if (val)                                        \
+                flags |= y;                                 \
+            else                                            \
+                flags &= y;                                 \
+        }                                                   \
+                                                            \
+        constexpr bool Is##x() const { return flags & y; }
 
         GET_SET_RENDER_MODE(Hidden, RenderMode::HIDDEN);
         GET_SET_RENDER_MODE(Static, RenderMode::STATIC);
