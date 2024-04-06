@@ -17,6 +17,22 @@
 #define ifcompiler(gcc,clang,msvc) msvc
 #endif
 
+#include <cstddef>
+#include <string>
+#include <cstdint>
+
 template <typename T, uint32_t count> constexpr uint32_t lengthOf(const T (&)[count]) {
     return count;
 };
+
+namespace Platform {
+
+  void DumpSystemData();
+
+  bool GetCommandLine(const std::string& data);
+
+  void GetExecutableDirectory(const std::string& data);
+
+
+
+}

@@ -1,12 +1,9 @@
 #include <shadow/core/Thread.h>
-#ifdef _WIN32
 #define INITGUID
 #define NOGDI
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <evntcons.h>
-
-#endif
 #include <cstdint>
 #include "shadow/profile/Profiler.h"
 

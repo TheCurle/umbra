@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <vector>
-#include "management/delegate.h"
+#include "shadow/assets/management/delegate.h"
 
 namespace ShadowEngine {
 
@@ -15,8 +15,8 @@ namespace ShadowEngine {
     struct SystemManager {
         virtual ~SystemManager() = default;
 
-        static std::unique_ptr<SystemManager> create();
-        static void createAllSystems();
+        static std::unique_ptr<SystemManager> create(struct Engine& eng);
+        static void createAllSystems(Engine& eng);
 
         virtual void initSystems() = 0;
 
@@ -66,11 +66,17 @@ namespace ShadowEngine {
     struct EngineSystem {
         virtual ~EngineSystem();
 
+        // The System is just being loaded. No order is guaranteed.
         virtual void init() {}
+        // All systems have been inited, every System gets a second chance in case it depends on something else.
+        virtual void initOver() {}
+        // Update the system. Parameter is the amount of time passed since last update.
         virtual void update(float) {}
         virtual const char* getName() const = 0;
         virtual uint32_t getVersion() const { return 0; };
+        // Save the state of the System.
         virtual void serialise(OutputMemoryStream& serializer) const = 0;
+        // Load the state of the System from a previous save.
         virtual bool deserialize(uint32_t version, InputMemoryStream& serializer) = 0;
         virtual void systemAdded(EngineSystem& system) {}
 
